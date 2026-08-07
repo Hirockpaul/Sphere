@@ -46,8 +46,7 @@ function Home() {
     try {
       const { user } = await signInWithPopup(auth, googleProvider);
       const idToken = await user.getIdToken();
-      await instance.post("/auth/login", { idToken });
-      const { data } = await instance.get("/me");
+      const { data } = await instance.post("/auth/login", { idToken });
       dispatch(setUser(data.user));
       console.log("Logged-in user:", data.user);
       navigate("/hero", { replace: true });

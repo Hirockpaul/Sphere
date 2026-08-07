@@ -1,11 +1,13 @@
 import express from "express";
 import "dotenv/config";
 import connectDb from "./config/db.js";
+import chatRoutes from "./routes/chat.routes.js";
 
 const port = process.env.PORT || 8002;
 
 const app = express();
 app.use(express.json());
+app.use(chatRoutes);
 
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", service: "chat" });

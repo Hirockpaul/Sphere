@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import SignupForm from "../components/auth/SignupForm.jsx";
+import SignupForm from "../components/SignupForm.jsx";
 import img from "../assets/img.jpg";
 
 function Signup() {

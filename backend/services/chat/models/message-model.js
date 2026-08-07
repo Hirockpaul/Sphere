@@ -7,12 +7,18 @@ const messageSchema = new mongoose.Schema({
         },
         role:{ 
             type: String,
-            enum:["user", "assistant"]
+            enum:["user", "assistant"],
+            required: true
         },
-        content: String
+        content: {
+            type: String,
+            required: true,
+            trim: true
+        }
 },{
   timestamps: true
 })
 
 const Message = mongoose.model("Message",messageSchema)
+export default Message
   

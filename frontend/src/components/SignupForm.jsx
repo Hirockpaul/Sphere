@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { registerWithEmail } from "../../services/auth.service.js";
+import { registerWithEmail } from "../services/auth.service.js";
 
 function getErrorMessage(error) {
   const firebaseMessages = {
