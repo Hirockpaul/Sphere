@@ -8,7 +8,7 @@ const port = process.env.PORT || 8000;
 import { protect } from "./middleware/auth.middleware.js";
 import { getCurrentUser } from "./controllers/user.controller.js";
 import { proxyWithHeader } from "./utils/proxyWithHeader.js";
-
+import morgan from "morgan";
 const app = express();
 
 app.use(cors({
@@ -16,10 +16,11 @@ app.use(cors({
   credentials: true,
 }));
 
+app.use(morgan("dev"))
 app.use(cookieParser());
 app.use("/auth", proxy(process.env.AUTH_SERVICE_URL));
 app.use("/chat", protect, proxyWithHeader(process.env.CHAT_SERVICE_URL));
-app.use("/agents", protect, proxy(process.env.AGENTS_SERVICE_URL));
+app.use("/agents", protect, proxyWithHeader(process.env.AGENTS_SERVICE_URL));
 app.get("/me", protect, getCurrentUser);
 
 

@@ -1,5 +1,6 @@
 import {
   createUserWithEmailAndPassword,
+  signOut,
   signInWithPopup,
   updateProfile,
 } from "firebase/auth";
@@ -24,4 +25,12 @@ export async function registerWithGithub() {
     credential.user,
     credential.user.displayName || "GitHub user",
   );
+}
+
+export async function logoutUser() {
+  try {
+    await instance.get("/auth/logout");
+  } finally {
+    await signOut(auth);
+  }
 }

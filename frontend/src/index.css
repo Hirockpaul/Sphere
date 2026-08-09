@@ -6,6 +6,25 @@
   color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  --sphere-bg: #1a1a19;
+  --sphere-sidebar: #151515;
+  --sphere-text: #f5f5f5;
+  --sphere-text-secondary: #a3a3a3;
+  --sphere-text-muted: #737373;
+  --sphere-purple: #6d5dfb;
+  --sphere-purple-hover: #7c6cff;
+  --sphere-user: #635bff;
+  --sphere-user-hover: #7068ff;
+  --sphere-input: #20201f;
+  --sphere-input-border: #333331;
+  --sphere-active: #25232f;
+  --sphere-active-border: #4b3fa3;
+  --sphere-divider: #2a2a28;
+  --sphere-code: #111110;
+  --sphere-code-border: #30302e;
+  --sphere-success: #22c55e;
+  --sphere-error: #ef4444;
+  --sphere-link: #60a5fa;
 }
 
 * {
@@ -22,3 +41,19 @@ button,
 input {
   font: inherit;
 }
+
+@keyframes thinking-bounce {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
+.thinking-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  animation: thinking-bounce 1.15s infinite ease-in-out;
+}
+
+.thinking-dot:nth-child(2) { animation-delay: 0.14s; }
+.thinking-dot:nth-child(3) { animation-delay: 0.28s; }

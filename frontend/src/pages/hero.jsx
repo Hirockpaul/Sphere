@@ -4,11 +4,11 @@ import Artifact from "../components/Artifact.jsx";
 
 function Hero() {
   return (
-    <>
+    <main className="flex h-screen w-full overflow-hidden bg-[var(--sphere-bg)] text-[var(--sphere-text)]">
       <SideBar />
       <ChatArea />
       <Artifact />
-    </>
+    </main>
   );
 }
 

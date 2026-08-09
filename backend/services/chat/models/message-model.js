@@ -16,7 +16,15 @@ const messageSchema = new mongoose.Schema({
             trim: true
         }
 },{
-  timestamps: true
+  timestamps: true,
+  toJSON: {
+    virtuals: true,
+    transform: (_document, value) => {
+      value.messageId = value._id.toString();
+      delete value.id;
+      return value;
+    }
+  }
 })
 
 const Message = mongoose.model("Message",messageSchema)

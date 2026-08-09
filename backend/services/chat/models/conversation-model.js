@@ -14,7 +14,15 @@ const conversationSchema = new mongoose.Schema({
         required: true
     }
 },{
-  timestamps: true
+  timestamps: true,
+  toJSON: {
+    virtuals: true,
+    transform: (_document, value) => {
+      value.conversationId = value._id.toString();
+      delete value.id;
+      return value;
+    }
+  }
 })
 
 const Conversation = mongoose.model("Conversation",conversationSchema)

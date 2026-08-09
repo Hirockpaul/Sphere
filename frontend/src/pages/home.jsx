@@ -35,6 +35,7 @@ function Home() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [loginStep, setLoginStep] = useState("");
   const [error, setError] = useState("");
 
   console.log("User data from Redux:", userData);
@@ -42,22 +43,30 @@ function Home() {
   const googleLogin = async () => {
     setError("");
     setLoading(true);
+    setLoginStep("Opening Google...");
 
     try {
       const { user } = await signInWithPopup(auth, googleProvider);
+      setLoginStep("Starting your session...");
       const idToken = await user.getIdToken();
       const { data } = await instance.post("/auth/login", { idToken });
       dispatch(setUser(data.user));
-      console.log("Logged-in user:", data.user);
       navigate("/hero", { replace: true });
     } catch (loginError) {
+      const serverUnavailable =
+        loginError.code === "ECONNABORTED" ||
+        loginError.code === "ERR_NETWORK";
+
       setError(
-        loginError.response?.data?.message ||
+        (serverUnavailable &&
+          "The Sphere server is unavailable. Start the gateway and auth service, then try again.") ||
+          loginError.response?.data?.message ||
           loginError.message ||
           "Google login failed",
       );
     } finally {
       setLoading(false);
+      setLoginStep("");
     }
   };
 
@@ -116,7 +125,7 @@ function Home() {
             className="mt-10 flex h-13 w-full items-center justify-center gap-3 rounded-lg border border-white/15 bg-transparent text-base font-semibold transition hover:border-white/35 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <GoogleIcon />
-            {loading ? "Connecting..." : "Continue with Google"}
+            {loading ? loginStep : "Continue with Google"}
           </button>
 
           <div className="my-7 flex items-center gap-4 text-sm">

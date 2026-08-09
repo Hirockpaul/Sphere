@@ -27,7 +27,7 @@ async function createUserSession({ idToken, decodedToken, name }) {
       email: decodedToken.email || "",
       avatar: decodedToken.picture || "",
     },
-    { new: true, upsert: true, runValidators: true },
+    { returnDocument: "after", upsert: true, runValidators: true },
   );
 
   await saveSession(

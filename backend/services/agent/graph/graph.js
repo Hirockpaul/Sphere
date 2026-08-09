@@ -1,20 +1,16 @@
 import { END, START, StateGraph } from "@langchain/langgraph";
 import { AgentState } from "./state.js";
 import { router } from "./router.js";
-import { searchAgent } from "../agents/search.agent.js";
-import { pptAgent } from "../agents/ppt.agent.js";
-import { pdfAgent } from "../agents/pdf.agent.js";
-import { visionAgent } from "../agents/vision.agent.js";
-import { codingAgent } from "../agents/coding.agent.js";
 import { chatAgent } from "../agents/chat.agent.js";
 
 const agentNodes = {
   chat: chatAgent,
-  search: searchAgent,
-  coding: codingAgent,
-  vision: visionAgent,
-  pdf: pdfAgent,
-  ppt: pptAgent,
+  // Use the working chat agent until specialized implementations are added.
+  search: chatAgent,
+  coding: chatAgent,
+  vision: chatAgent,
+  pdf: chatAgent,
+  ppt: chatAgent,
 };
 
 const workflow = new StateGraph(AgentState);
