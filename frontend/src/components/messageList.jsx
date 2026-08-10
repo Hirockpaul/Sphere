@@ -48,6 +48,7 @@ function MessageList() {
                             key={msg?._id || `${msg?.role}-${index}`}
                             role={msg?.role}
                             content={msg?.content}
+                            images={msg?.images}
                             isGenerating={isGenerating}
                             canRegenerate={isLatestAssistant}
                             onEdit={msg.role === 'user'

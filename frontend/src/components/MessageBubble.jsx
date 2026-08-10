@@ -1,9 +1,86 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import Highlighter from "react-highlight-words";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Check, Copy, Pencil, RefreshCw, Share } from "lucide-react";
-import { useState } from "react";
+import { Children, isValidElement, useState } from "react";
 
-function MessageBubble({ role, content, canRegenerate, isGenerating, onEdit, onRegenerate }) {
+function InlineCode({ children }) {
+  const text = String(children ?? "");
+
+  return (
+    <code className="rounded-md border border-[#34303b] bg-[#292630] px-1.5 py-0.5 font-mono text-[13px] text-[#ff7aaa]">
+      <Highlighter
+        autoEscape
+        highlightClassName="bg-transparent text-[#ff7aaa]"
+        searchWords={[text]}
+        textToHighlight={text}
+      />
+    </code>
+  );
+}
+
+function CodeBlock({ children }) {
+  const [copied, setCopied] = useState(false);
+  const child = Children.count(children) === 1 ? Children.only(children) : null;
+  const className = isValidElement(child) ? child.props.className || "" : "";
+  const language = className.match(/language-([\w-]+)/)?.[1] || "text";
+  const rawCode = isValidElement(child) ? child.props.children : children;
+  const code = String(rawCode ?? "").replace(/\n$/, "");
+
+  const copyCode = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  };
+
+  return (
+    <div className="my-5 overflow-hidden rounded-xl border border-[#252a35] bg-[#0b0e14] shadow-[0_12px_35px_rgba(0,0,0,0.22)]">
+      <div className="flex h-10 items-center justify-between border-b border-[#252a35] bg-[#171a22] px-3.5 text-[11px] font-semibold uppercase tracking-wide text-[#838b9b]">
+        <span>{language}</span>
+        <button
+          type="button"
+          onClick={copyCode}
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium normal-case tracking-normal text-[#aeb5c2] transition hover:bg-white/[0.06] hover:text-white"
+          aria-label="Copy code"
+        >
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        language={language}
+        style={oneDark}
+        showLineNumbers
+        wrapLongLines={false}
+        customStyle={{
+          margin: 0,
+          padding: "12px 18px 14px",
+          background: "#0b0e14",
+          fontSize: "13px",
+          lineHeight: "24px",
+          overflowX: "auto",
+        }}
+        codeTagProps={{
+          style: {
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+          },
+        }}
+        lineNumberStyle={{
+          minWidth: "2.25rem",
+          paddingRight: "1rem",
+          color: "#4f5868",
+          userSelect: "none",
+        }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  );
+}
+
+function MessageBubble({ role, content, images = [], canRegenerate, isGenerating, onEdit, onRegenerate }) {
   const isUser = role === "user";
   const [copied, setCopied] = useState(false);
 
@@ -57,20 +134,14 @@ function MessageBubble({ role, content, canRegenerate, isGenerating, onEdit, onR
               code: ({ className, children }) => {
                 const isBlock = Boolean(className) || String(children).includes("\n");
                 return isBlock ? (
-                  <code className={`${className || ""} block min-w-max font-mono text-[13px] text-slate-200`}>
+                  <code className={className || ""}>
                     {children}
                   </code>
                 ) : (
-                  <code className="rounded bg-[var(--sphere-code)] px-1.5 py-0.5 font-mono text-[13px] text-[var(--sphere-text)]">
-                    {children}
-                  </code>
+                  <InlineCode>{children}</InlineCode>
                 );
               },
-              pre: ({ children }) => (
-                <pre className="my-4 overflow-x-auto rounded-xl border border-[var(--sphere-code-border)] bg-[var(--sphere-code)] p-4 [scrollbar-width:thin]">
-                  {children}
-                </pre>
-              ),
+              pre: CodeBlock,
               table: ({ children }) => (
                 <table className="my-4 block w-full overflow-x-auto border-collapse text-left text-sm">
                   {children}
@@ -83,6 +154,20 @@ function MessageBubble({ role, content, canRegenerate, isGenerating, onEdit, onR
           >
             {typeof content === "string" ? content : ""}
           </ReactMarkdown>
+        )}
+        {!isUser && Array.isArray(images) && images.length > 0 && (
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {images.map((src, index) => (
+              <a key={`${src}-${index}`} href={src} target="_blank" rel="noreferrer">
+                <img
+                  src={src}
+                  alt={`Search result ${index + 1}`}
+                  loading="lazy"
+                  className="max-h-80 w-full rounded-xl border border-white/10 object-cover"
+                />
+              </a>
+            ))}
+          </div>
         )}
         {isUser && (
           <div className="absolute -bottom-9 right-0 flex items-center gap-0.5 text-slate-500 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">

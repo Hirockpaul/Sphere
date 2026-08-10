@@ -90,6 +90,9 @@ export const saveMessage = async (req, res) => {
     try {
         const userId = req.headers["x-user-id"];
         const { conversationId, role, content } = req.body;
+        const images = Array.isArray(req.body.images)
+            ? req.body.images.filter((image) => typeof image === "string" && image.trim()).slice(0, 20)
+            : [];
         const conversation = await Conversation.exists({ _id: conversationId, userId });
 
         if (!conversation) {
@@ -101,7 +104,7 @@ export const saveMessage = async (req, res) => {
             return res.status(400).json({ message: "A valid role and message content are required" });
         }
 
-        const message = await Message.create({ conversationId, role, content: cleanContent });
+        const message = await Message.create({ conversationId, role, content: cleanContent, images });
         const generatedTitle = role === "user" ? generateConversationTitle(cleanContent) : null;
         if (generatedTitle) {
             await Conversation.findOneAndUpdate(
@@ -192,3 +195,22 @@ export const getMessages = async (req, res) => {
         return res.status(500).json({ message: `get messages error: ${error.message}` });
     }
 }
+
+export const getUserMemoryMessages = async (req, res) => {
+    try {
+        const userId = req.headers["x-user-id"];
+        const conversations = await Conversation.find({ userId }).select("_id").lean();
+        const conversationIds = conversations.map(({ _id }) => _id);
+
+        const messages = await Message.find({
+            conversationId: { $in: conversationIds },
+        })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
+
+        return res.status(200).json(messages.reverse());
+    } catch (error) {
+        return res.status(500).json({ message: `get user memory error: ${error.message}` });
+    }
+};

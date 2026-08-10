@@ -1,11 +1,29 @@
-import { Send, Mic, Paperclip, X } from "lucide-react";
+import {Code2,FileText, Globe2, Image as ImageIcon, MessageSquare, Mic, Paperclip, Presentation, Send, X, Zap,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import useChatRequest from "../hooks/useChatRequest";
-import { setComposerDraft } from "../redux/messageSlice";
+import { setComposerDraft, setMessages } from "../redux/messageSlice";
+import { createConversation } from "../features/createConversation";
+import {
+  addConversation,
+  setSelectedConversation,
+} from "../redux/conversationSlice";
+
+const agentModes = [
+  { id: "auto", label: "Auto", icon: Zap },
+  { id: "chat", label: "Chat", icon: MessageSquare },
+  { id: "coding", label: "Coding", icon: Code2 },
+  { id: "pdf", label: "PDF", icon: FileText },
+  { id: "ppt", label: "PPT", icon: Presentation },
+  { id: "image", label: "Image", icon: ImageIcon },
+  { id: "search", label: "Search", icon: Globe2 },
+];
 
 function ChatInput() {
   const [message, setMessage] = useState("");
+  const [selectedMode, setSelectedMode] = useState("auto");
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
   const dispatch = useDispatch();
@@ -31,15 +49,36 @@ function ChatInput() {
     event.preventDefault();
 
     const prompt = (composerDraft?.content ?? message).trim();
-    if (!prompt || isGenerating || !selectedConversation?._id) return;
+    if (!prompt || isGenerating || isCreatingConversation) return;
     setMessage("");
-    const succeeded = await submit(prompt, composerDraft ? {
-      mode: "edit",
-      messageId: composerDraft.messageId,
-      originalMessage: composerDraft.originalMessage,
-    } : undefined);
-    if (succeeded && composerDraft) dispatch(setComposerDraft(null));
-    if (!succeeded) setMessage(prompt);
+
+    let conversation = selectedConversation;
+    try {
+      if (!conversation?._id) {
+        setIsCreatingConversation(true);
+        conversation = await createConversation();
+        dispatch(addConversation(conversation));
+        dispatch(setSelectedConversation(conversation));
+        dispatch(setMessages({ conversationId: conversation._id, messages: [] }));
+      }
+
+      const succeeded = await submit(prompt, {
+        ...(composerDraft ? {
+          mode: "edit",
+          messageId: composerDraft.messageId,
+          originalMessage: composerDraft.originalMessage,
+        } : {}),
+        conversationId: conversation._id,
+        agent: selectedMode,
+      });
+      if (succeeded && composerDraft) dispatch(setComposerDraft(null));
+      if (!succeeded) setMessage(prompt);
+    } catch (error) {
+      console.error("Failed to create conversation:", error);
+      setMessage(prompt);
+    } finally {
+      setIsCreatingConversation(false);
+    }
   };
 
   const handleKeyDown = (event) => {
@@ -53,8 +92,29 @@ function ChatInput() {
     <div className="w-full shrink-0 bg-[var(--sphere-bg)] px-3 py-4 md:px-5">
       <form
         onSubmit={submitMessage}
-        className="mx-auto flex w-full max-w-4xl flex-col gap-3 rounded-2xl border border-[var(--sphere-input-border)] bg-[var(--sphere-input)] px-4 pb-3 pt-4 transition focus-within:border-[var(--sphere-purple)]"
+        className="mx-auto flex w-full max-w-5xl flex-col rounded-[22px] border border-[var(--sphere-input-border)] bg-[var(--sphere-input)] px-4 pb-3 pt-4 shadow-[0_18px_45px_rgba(0,0,0,0.12)] transition focus-within:border-[var(--sphere-purple)] sm:px-5"
       >
+        <div className="mb-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {agentModes.map(({ id, label, icon: Icon }) => {
+            const isSelected = selectedMode === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setSelectedMode(id)}
+                title={`${label} agent`}
+                aria-pressed={isSelected}
+                className={`flex h-10 shrink-0 items-center gap-2 rounded-full border px-3.5 text-sm font-semibold transition sm:px-4 ${isSelected
+                  ? "border-[#8b73ff] bg-[var(--sphere-purple)] text-white shadow-[0_0_18px_rgba(109,93,251,0.5)]"
+                  : "border-white/[0.06] bg-white/[0.035] text-slate-500"
+                } cursor-pointer hover:border-white/15 hover:text-slate-300`}
+              >
+                <Icon size={16} strokeWidth={2} />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
         {composerDraft && (
           <div className="flex items-center justify-between rounded-lg bg-[#25232F] px-3 py-2 text-xs text-[var(--sphere-purple-hover)]">
             <span>Editing your message</span>
@@ -73,9 +133,9 @@ function ChatInput() {
             : setMessage(event.target.value)}
           onInput={resizeTextarea}
           onKeyDown={handleKeyDown}
-          placeholder="Ask anything..."
-          rows={2}
-          className="max-h-40 min-h-14 w-full resize-none bg-transparent text-[15px] leading-relaxed text-[var(--sphere-text)] outline-none placeholder:text-[var(--sphere-text-muted)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          placeholder={selectedMode === "auto" ? "Ask anything — Sphere will choose the best agent..." : `Ask the ${selectedMode} agent...`}
+          rows={3}
+          className="max-h-40 min-h-24 w-full resize-none bg-transparent py-1 text-[15px] leading-relaxed text-[var(--sphere-text)] outline-none placeholder:text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         />
 
         <div className="flex items-center justify-between">
@@ -102,7 +162,7 @@ function ChatInput() {
 
           <button
             type="submit"
-            disabled={!(composerDraft?.content ?? message).trim() || isGenerating || !selectedConversation?._id}
+            disabled={!(composerDraft?.content ?? message).trim() || isGenerating || isCreatingConversation}
             title="Send message"
             aria-label="Send message"
             className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--sphere-purple)] text-white transition hover:bg-[var(--sphere-purple-hover)] disabled:cursor-not-allowed disabled:bg-white/[0.07] disabled:text-[var(--sphere-text-muted)]"

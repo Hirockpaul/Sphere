@@ -3,6 +3,11 @@ import { getModel } from "../config/llmModel.js"
 const VALID_AGENTS = new Set(["chat", "search", "coding", "vision", "pdf", "ppt"]);
 
 export const router = async (state) => {
+ const requestedAgent = state.agent === "image" ? "vision" : state.agent;
+ if (requestedAgent !== "auto" && VALID_AGENTS.has(requestedAgent)) {
+   return { agent: requestedAgent };
+ }
+
  const llm = await getModel("chat")
  const prompt = `You are an intelligent router for a multi-agent AI platform.
 

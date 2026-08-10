@@ -5,6 +5,7 @@ import {
   deleteConversation,
   getConversations,
   getMessages,
+  getUserMemoryMessages,
   saveMessage,
   updateMessage,
   updateConversations,
@@ -20,6 +21,7 @@ router.patch("/conversations", updateConversations);
 router.delete("/conversations/:id", deleteConversation);
 router.post("/messages", saveMessage);
 router.get("/messages", getMessages);
+router.get("/memory/messages", getUserMemoryMessages);
 router.patch("/messages/:id", updateMessage);
 router.delete("/messages/:id", deleteMessage);
 
