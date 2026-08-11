@@ -1,8 +1,10 @@
 import redis from "../../../shared/redis/redis.js";
 import { getMessages, getUserMessages } from "../utils/getMessages.js";
+import { toCodingMessage } from "../tools/coding/codingMemory.js";
 
 const MEMORY_TTL_SECONDS = 24 * 60 * 60;
 const MAX_MESSAGES = 20;
+const MAX_CODING_MESSAGES = 6;
 const MAX_CROSS_CHAT_MESSAGES = 10;
 const getKey = (conversationId) => `message-${conversationId}`;
 const getUserKey = (userId) => `user-memory-${userId}`;
@@ -47,6 +49,17 @@ export const getMemory = async (conversationId, userId) => {
     ...previousChatMessages,
     ...recentMessages,
   ];
+};
+
+export const getCodingMemory = async (conversationId, userId) => {
+  const key = getKey(conversationId);
+  const cached = await redis.get(key);
+  if (cached) return JSON.parse(cached).slice(-MAX_CODING_MESSAGES).map(toCodingMessage);
+
+  const messages = await getMessages(conversationId, userId);
+  const recentMessages = messages.slice(-MAX_MESSAGES);
+  await redis.set(key, JSON.stringify(recentMessages), "EX", MEMORY_TTL_SECONDS);
+  return recentMessages.slice(-MAX_CODING_MESSAGES).map(toCodingMessage);
 };
 
 export const addMessage = async (conversationId, role, content) => {

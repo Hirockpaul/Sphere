@@ -26,7 +26,7 @@ export default function useChatRequest() {
     const mode = options.mode || "send";
     const tempId = `pending-${crypto.randomUUID()}`;
     const failedRequest = { prompt: cleanPrompt, conversationId, ...options };
-    dispatch(setGeneration({ isGenerating: true }));
+    dispatch(setGeneration({ isGenerating: true, agent: options.agent }));
 
     if (mode === "send") {
       dispatch(addMessage({
@@ -64,7 +64,16 @@ export default function useChatRequest() {
         } else if (mode === "edit" && data.userMessage) {
           dispatch(replaceMessage({ id: options.messageId, message: data.userMessage }));
         }
-        dispatch(addMessage(data.assistantMessage));
+        const artifact = Array.isArray(data.codingResponse?.files) && data.codingResponse.files.length > 0
+          ? {
+              responseType: data.codingResponse.responseType,
+              summary: data.codingResponse.summary,
+              files: data.codingResponse.files,
+            }
+          : undefined;
+        dispatch(addMessage(artifact && !data.assistantMessage.artifact
+          ? { ...data.assistantMessage, artifact }
+          : data.assistantMessage));
       }
       if (data.conversation) dispatch(updateConversation(data.conversation));
       dispatch(setGeneration({ isGenerating: false }));
@@ -77,7 +86,7 @@ export default function useChatRequest() {
       dispatch(setGeneration({
         isGenerating: false,
         error: error.code === "ECONNABORTED"
-          ? "Sphere is taking longer than expected. Please try again."
+          ? "The model did not finish within the configured wait time. OpenRouter may be busy; retry the request."
           : error.response?.data?.message || error.message || "Sphere couldn't complete that response.",
         failedRequest,
       }));

@@ -1,9 +1,14 @@
 import express from "express";
-import "dotenv/config";
+import { config as loadEnvironment } from "dotenv";
+import { fileURLToPath } from "node:url";
 import connectDb from "./config/db.js";
 import { graph } from "./graph/graph.js";
 import router from "./routers/agents.route.js";
 
+const serviceDirectory = fileURLToPath(new URL(".", import.meta.url));
+loadEnvironment({ path: `${serviceDirectory}.env` });
+// Supply documented non-secret defaults without overriding real environment values.
+loadEnvironment({ path: `${serviceDirectory}.env.example`, quiet: true });
 
 const port = process.env.PORT || 8002;
 
@@ -28,6 +33,10 @@ app.post("/", async (req, res, next) => {
     return res.status(200).json({
       agent: result.agent,
       response: result.aiResponse,
+      ...(result.agent === "coding" ? {
+        codingIntent: result.codingIntent,
+        codingResponse: result.codingResponse,
+      } : {}),
     });
   } catch (error) {
     next(error);

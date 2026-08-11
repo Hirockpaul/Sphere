@@ -3,7 +3,7 @@ import remarkGfm from "remark-gfm";
 import Highlighter from "react-highlight-words";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, Copy, Pencil, RefreshCw, Share } from "lucide-react";
+import { Check, Code2, Copy, Eye, Pencil, RefreshCw, Share } from "lucide-react";
 import { Children, isValidElement, useState } from "react";
 
 function InlineCode({ children }) {
@@ -80,8 +80,9 @@ function CodeBlock({ children }) {
   );
 }
 
-function MessageBubble({ role, content, images = [], canRegenerate, isGenerating, onEdit, onRegenerate }) {
+function MessageBubble({ role, content, images = [], artifact, artifactActive, canRegenerate, isGenerating, onEdit, onRegenerate, onOpenArtifact }) {
   const isUser = role === "user";
+  const hasArtifact = !isUser && Array.isArray(artifact?.files) && artifact.files.length > 0;
   const [copied, setCopied] = useState(false);
 
   const copyResponse = async () => {
@@ -168,6 +169,28 @@ function MessageBubble({ role, content, images = [], canRegenerate, isGenerating
               </a>
             ))}
           </div>
+        )}
+        {hasArtifact && (
+          <button
+            type="button"
+            onClick={onOpenArtifact}
+            aria-pressed={artifactActive}
+            className={`mt-4 flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition ${artifactActive
+              ? "border-indigo-400/40 bg-indigo-500/10 shadow-[0_0_0_1px_rgba(129,140,248,0.08)]"
+              : "border-white/[0.09] bg-[#11141a] hover:border-indigo-400/30 hover:bg-[#151924]"}`}
+          >
+            <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${artifactActive ? "bg-indigo-500/20 text-indigo-300" : "bg-white/[0.05] text-slate-400"}`}>
+              <Code2 size={17} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium text-[var(--sphere-text)]">{artifact.summary || "Generated code"}</span>
+              <span className="mt-0.5 block text-xs text-[var(--sphere-text-muted)]">{artifact.files.length} {artifact.files.length === 1 ? "file" : "files"}</span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-500 px-2.5 py-1.5 text-xs font-semibold text-white">
+              {artifactActive ? <Eye size={13} /> : <Code2 size={13} />}
+              {artifactActive ? "Viewing" : "Open code"}
+            </span>
+          </button>
         )}
         {isUser && (
           <div className="absolute -bottom-9 right-0 flex items-center gap-0.5 text-slate-500 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">

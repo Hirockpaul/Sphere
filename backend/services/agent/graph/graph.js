@@ -3,11 +3,12 @@ import { AgentState } from "./state.js";
 import { router } from "./router.js";
 import { chatAgent } from "../agents/chat.agent.js";
 import { searchAgent } from "../agents/search.agent.js";
+import { codingAgent } from "../agents/coding.agent.js";
 
 const agentNodes = {
   chat: chatAgent,
   search: searchAgent,
-  coding: chatAgent,
+  coding: codingAgent,
   vision: chatAgent,
   pdf: chatAgent,
   ppt: chatAgent,

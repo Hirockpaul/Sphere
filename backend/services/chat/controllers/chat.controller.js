@@ -4,6 +4,7 @@ import {
     DEFAULT_CONVERSATION_TITLE,
     generateConversationTitle,
 } from "../utils/conversation-title.js";
+import { isTransientMongoError, withMongoRetry } from "../utils/mongoRetry.js";
 
 export const createConversation = async (req, res) => {
     try {
@@ -93,7 +94,27 @@ export const saveMessage = async (req, res) => {
         const images = Array.isArray(req.body.images)
             ? req.body.images.filter((image) => typeof image === "string" && image.trim()).slice(0, 20)
             : [];
-        const conversation = await Conversation.exists({ _id: conversationId, userId });
+        const artifactInput = req.body.artifact;
+        const artifactFiles = Array.isArray(artifactInput?.files)
+            ? artifactInput.files.filter((file) =>
+                typeof file?.path === "string" && file.path.trim()
+                && typeof file?.content === "string"
+            ).map((file) => ({
+                path: file.path.trim(),
+                language: typeof file.language === "string" ? file.language.trim() || "text" : "text",
+                content: file.content,
+            }))
+            : [];
+        const artifact = role === "assistant" && artifactFiles.length > 0
+            ? {
+                responseType: artifactInput.responseType === "code" ? "code" : "files",
+                summary: typeof artifactInput.summary === "string" && artifactInput.summary.trim()
+                    ? artifactInput.summary.trim().slice(0, 160)
+                    : "Generated project",
+                files: artifactFiles,
+            }
+            : undefined;
+        const conversation = await withMongoRetry(() => Conversation.exists({ _id: conversationId, userId }));
 
         if (!conversation) {
             return res.status(404).json({ message: "Conversation not found" });
@@ -104,25 +125,28 @@ export const saveMessage = async (req, res) => {
             return res.status(400).json({ message: "A valid role and message content are required" });
         }
 
-        const message = await Message.create({ conversationId, role, content: cleanContent, images });
+        const message = await withMongoRetry(() => Message.create({ conversationId, role, content: cleanContent, images, artifact }));
         const generatedTitle = role === "user" ? generateConversationTitle(cleanContent) : null;
         if (generatedTitle) {
-            await Conversation.findOneAndUpdate(
+            await withMongoRetry(() => Conversation.findOneAndUpdate(
                 { _id: conversationId, userId, title: DEFAULT_CONVERSATION_TITLE },
                 { title: generatedTitle, updatedAt: new Date() },
                 { runValidators: true },
-            );
+            ));
         }
-        const updatedConversation = await Conversation.findByIdAndUpdate(
+        const updatedConversation = await withMongoRetry(() => Conversation.findByIdAndUpdate(
             conversationId,
             { updatedAt: new Date() },
             { returnDocument: "after" },
-        );
+        ));
 
         return res.status(201).json({ message, conversation: updatedConversation });
     } catch (error) {
         if (error.name === "CastError") {
             return res.status(400).json({ message: "Invalid conversation id" });
+        }
+        if (isTransientMongoError(error)) {
+            return res.status(503).json({ message: "MongoDB is temporarily unavailable. Please retry shortly." });
         }
 
         return res.status(500).json({ message: `save message error: ${error.message}` });

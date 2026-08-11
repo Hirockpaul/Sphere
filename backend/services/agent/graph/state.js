@@ -10,8 +10,8 @@ export const AgentState = Annotation.Root({
     searchIntent:Annotation(),
     searchResults:Annotation(),
     toolResult:Annotation(),
-    images:Annotation()
-
-
-
+    images:Annotation(),
+    artifacts:Annotation(),
+    codingIntent:Annotation(),
+    codingResponse:Annotation(),
 })

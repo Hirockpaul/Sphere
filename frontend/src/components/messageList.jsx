@@ -2,11 +2,11 @@ import { useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import MessageBubble from './MessageBubble'
 import useChatRequest from '../hooks/useChatRequest'
-import { setComposerDraft } from '../redux/messageSlice'
+import { selectArtifact, setComposerDraft } from '../redux/messageSlice'
 
 function MessageList() {
     const { selectedConversation } = useSelector(state => state.conversation)
-    const { messages, isGenerating } = useSelector(state => state.message)
+    const { messages, isGenerating, generationAgent, activeArtifactMessageId } = useSelector(state => state.message)
     const { submit } = useChatRequest()
     const dispatch = useDispatch()
     const scrollRef = useRef(null)
@@ -49,6 +49,9 @@ function MessageList() {
                             role={msg?.role}
                             content={msg?.content}
                             images={msg?.images}
+                            artifact={msg?.artifact}
+                            artifactActive={(msg?._id || msg?.messageId) === activeArtifactMessageId}
+                            onOpenArtifact={() => dispatch(selectArtifact(msg?._id || msg?.messageId))}
                             isGenerating={isGenerating}
                             canRegenerate={isLatestAssistant}
                             onEdit={msg.role === 'user'
@@ -62,7 +65,7 @@ function MessageList() {
                     {isGenerating && (
                         <div className='mx-auto flex w-full max-w-4xl justify-start' role='status' aria-live='polite'>
                             <div className='flex items-center gap-2 px-1 py-3 text-sm text-[var(--sphere-text-secondary)]'>
-                                <span>Sphere is thinking</span>
+                                <span>{generationAgent === "coding" ? "Sphere is building" : "Sphere is thinking"}</span>
                                 <span className='flex gap-1' aria-hidden='true'><i className='thinking-dot'/><i className='thinking-dot'/><i className='thinking-dot'/></span>
                             </div>
                         </div>

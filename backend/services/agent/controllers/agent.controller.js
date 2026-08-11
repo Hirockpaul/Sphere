@@ -59,13 +59,22 @@ export const agent = async (req, res) => {
         })
         const response = result.aiResponse
         const images = Array.isArray(result.images) ? result.images : []
+        const artifact = result.agent === "coding"
+            && Array.isArray(result.codingResponse?.files)
+            && result.codingResponse.files.length > 0
+            ? {
+                responseType: result.codingResponse.responseType,
+                summary: result.codingResponse.summary,
+                files: result.codingResponse.files,
+            }
+            : undefined
 
         if (typeof response !== "string" || !response.trim()) {
             throw new Error("The selected agent returned an empty response");
         }
 
         const { data: savedAssistant } = await axios.post(`${process.env.CHAT_SERVICE}/messages`, {
-            conversationId, role: "assistant", content: response, images
+            conversationId, role: "assistant", content: response, images, artifact
         }, { headers: { "x-user-id": userId } })
         await addMessage(conversationId, "assistant", response)
         await addUserMessages(userId, conversationId, [
@@ -77,6 +86,10 @@ export const agent = async (req, res) => {
            response,
            images,
            agent: result.agent,
+           ...(result.agent === "coding" ? {
+               codingIntent: result.codingIntent,
+               codingResponse: result.codingResponse,
+           } : {}),
            userMessage,
            assistantMessage: savedAssistant.message,
            conversation: savedAssistant.conversation || conversation,
@@ -86,7 +99,7 @@ export const agent = async (req, res) => {
     } catch (error) {
         const upstreamMessage = error.response?.data?.message || error.response?.data?.error;
         console.error("Agent request failed:", upstreamMessage || error.message);
-        return res.status(500).json({
+        return res.status(error.response?.status || 500).json({
             message: upstreamMessage || error.message || "Unable to process the message",
         });
     }
