@@ -91,9 +91,7 @@ export const saveMessage = async (req, res) => {
     try {
         const userId = req.headers["x-user-id"];
         const { conversationId, role, content } = req.body;
-        const images = Array.isArray(req.body.images)
-            ? req.body.images.filter((image) => typeof image === "string" && image.trim()).slice(0, 20)
-            : [];
+        const images = Array.isArray(req.body.images) ? req.body.images.filter((image) => typeof image === "string" && image.trim()).slice(0, 20) : [];
         const artifactInput = req.body.artifact;
         const artifactFiles = Array.isArray(artifactInput?.files)
             ? artifactInput.files.filter((file) =>

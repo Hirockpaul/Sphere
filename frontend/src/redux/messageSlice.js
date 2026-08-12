@@ -22,6 +22,7 @@ const messageSlice = createSlice({
         generationError: "",
         failedRequest: null,
         composerDraft: null,
+        composerAgent: "auto",
         artifacts: [],
         activeArtifactMessageId: null
     },
@@ -66,6 +67,7 @@ const messageSlice = createSlice({
         setComposerDraft: (state, action) => {
             state.composerDraft = action.payload;
         },
+        setComposerAgent: (state, action) => { state.composerAgent = action.payload || "auto"; },
         selectArtifact: (state, action) => {
             const messageId = action.payload;
             if (state.artifacts.some((artifact) => artifact.messageId === messageId)) {
@@ -77,5 +79,5 @@ const messageSlice = createSlice({
 
 });
 
-export const { setMessages, addMessage, replaceMessage, replaceMessagesFrom, removeMessage, setGeneration, setComposerDraft, selectArtifact } = messageSlice.actions;
+export const { setMessages, addMessage, replaceMessage, replaceMessagesFrom, removeMessage, setGeneration, setComposerDraft, setComposerAgent, selectArtifact } = messageSlice.actions;
 export default messageSlice.reducer;

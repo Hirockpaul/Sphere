@@ -54,6 +54,7 @@ export default function useChatRequest() {
         messageId: options.messageId,
         assistantMessageId: options.assistantMessageId,
         agent: options.agent,
+        sourceImage: options.sourceImage,
       });
       if (!data?.assistantMessage) throw new Error("The agent returned an invalid response.");
 

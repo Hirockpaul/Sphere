@@ -7,11 +7,9 @@ const AGENT_TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout
 
 async function sendMessage(payload) {
  try {
-    console.log("POST /agents/chat:", payload)
     const {data} = await api.post("/agents/chat", payload, {
       timeout: AGENT_TIMEOUT_MS,
     })
-    console.log("POST /agents/chat response:", data)
     return data
  } catch (error) {
     console.error("Failed to send message:", error)

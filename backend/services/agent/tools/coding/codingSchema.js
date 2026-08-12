@@ -3,9 +3,11 @@ import { CODING_INTENTS } from "./codingIntent.js";
 
 const relativePath = z.string().trim().min(1).max(240).superRefine((path, context) => {
   const normalized = path.replaceAll("\\", "/");
+
   if (normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized)) {
     context.addIssue({ code: "custom", message: "File paths must be relative" });
   }
+
   if (normalized.split("/").includes("..")) {
     context.addIssue({ code: "custom", message: "File paths cannot traverse parent directories" });
   }
@@ -14,14 +16,19 @@ const relativePath = z.string().trim().min(1).max(240).superRefine((path, contex
 const unsafeCredential = /\b(?:api[_-]?key|secret|password|passwd|token)\b\s*[:=]\s*["'][^"'\n${][^"'\n]*["']/i;
 
 export const normalizeCodingContent = (content) => {
-  if (typeof content !== "string") return content;
+  if (typeof content !== "string") {
+    return content;
+  }
+
   let normalized = content;
   const slashContinuedLines = normalized.match(/\\\r?\n/g)?.length || 0;
 
   if (normalized.startsWith('"') && normalized.endsWith('"')) {
     try {
       const decoded = JSON.parse(normalized);
-      if (typeof decoded === "string") normalized = decoded;
+      if (typeof decoded === "string") {
+        normalized = decoded;
+      }
     } catch {
       const escapedQuotes = normalized.match(/\\"/g)?.length || 0;
       if (slashContinuedLines >= 2 || (/[\r\n]/.test(normalized) && escapedQuotes >= 2)) {
@@ -62,6 +69,7 @@ export const codingFileSchema = z.object({
     if (/```/.test(content)) {
       context.addIssue({ code: "custom", message: "File content cannot contain Markdown fences" });
     }
+
     if (unsafeCredential.test(content)) {
       context.addIssue({ code: "custom", message: "File content appears to contain a hard-coded credential" });
     }
@@ -109,27 +117,53 @@ export const codingResponseSchema = z.object({
   nextSteps: z.array(z.string()).default([]),
 }).superRefine((response, context) => {
   if (response.intent === CODING_INTENTS.GENERATE && response.responseType !== "files") {
-    context.addIssue({ code: "custom", path: ["responseType"], message: "Generation requests require the files response type" });
+    context.addIssue({
+      code: "custom",
+      path: ["responseType"],
+      message: "Generation requests require the files response type",
+    });
   }
+
   if (response.intent === CODING_INTENTS.REVIEW && response.responseType !== "review") {
     context.addIssue({ code: "custom", path: ["responseType"], message: "Reviews require the review response type" });
   }
+
   if (response.intent === CODING_INTENTS.ARCHITECTURE && response.responseType !== "architecture") {
-    context.addIssue({ code: "custom", path: ["responseType"], message: "Architecture requests require the architecture response type" });
+    context.addIssue({
+      code: "custom",
+      path: ["responseType"],
+      message: "Architecture requests require the architecture response type",
+    });
   }
-  if ([CODING_INTENTS.GENERATE, CODING_INTENTS.REFACTOR, CODING_INTENTS.TEST].includes(response.intent) && response.files.length === 0) {
+
+  const fileRequiredIntents = [
+    CODING_INTENTS.GENERATE,
+    CODING_INTENTS.REFACTOR,
+    CODING_INTENTS.TEST,
+  ];
+  const requiresFiles = fileRequiredIntents.includes(response.intent);
+
+  if (requiresFiles && response.files.length === 0) {
     context.addIssue({ code: "custom", path: ["files"], message: "This intent requires at least one generated file" });
   }
 });
 
 export const parseCodingResponse = (value) => {
-  const candidate = value && typeof value === "object" && Array.isArray(value.files)
-    ? {
-        ...value,
-        files: value.files.map((file) => file && typeof file === "object"
-          ? { ...file, content: normalizeCodingContent(file.content) }
-          : file),
-      }
-    : value;
+  if (!value || typeof value !== "object" || !Array.isArray(value.files)) {
+    return codingResponseSchema.parse(value);
+  }
+
+  const files = value.files.map((file) => {
+    if (!file || typeof file !== "object") {
+      return file;
+    }
+
+    return {
+      ...file,
+      content: normalizeCodingContent(file.content),
+    };
+  });
+  const candidate = { ...value, files };
+
   return codingResponseSchema.parse(candidate);
 };

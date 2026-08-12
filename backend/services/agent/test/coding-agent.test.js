@@ -215,6 +215,20 @@ test("uses follow-up memory without duplicating the current user prompt", async 
   assert.ok(sent.some((message) => message.content === "Create an Express API"));
 });
 
+test("keeps provider system instructions first and unique", async () => {
+  const history = [
+    { role: "system", content: "Persisted memory context." },
+    { role: "user", content: "Earlier request" },
+    { role: "assistant", content: "Earlier response" },
+  ];
+  const dependencies = mockDependencies([baseResponse()], history);
+  await codingAgent({ prompt: "Create a module", conversationId: "c1", userId: "u1" }, dependencies);
+  const sent = dependencies.invocations[0];
+  assert.equal(sent[0].role, "system");
+  assert.equal(sent.filter((message) => message.role === "system").length, 1);
+  assert.match(sent[0].content, /Persisted memory context/);
+});
+
 test("includes persisted artifact files in follow-up context", async () => {
   const history = [{
     role: "assistant",

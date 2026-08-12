@@ -2,6 +2,7 @@ import Firecrawl from "@mendable/firecrawl-js";
 import { extractUrl } from "./searchRouter.js";
 
 const MAX_DOCUMENT_LENGTH = 12_000;
+const EXTRACTION_TIMEOUT_MS = 30_000;
 
 export const extractWebpage = async (url) => {
   if (!process.env.FIRECRAWL_API_KEY) {
@@ -14,17 +15,21 @@ export const extractWebpage = async (url) => {
 
   try {
     const parsedUrl = new URL(url);
-    if (!["http:", "https:"].includes(parsedUrl.protocol)) throw new Error("Unsupported URL protocol");
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      throw new Error("Unsupported URL protocol");
+    }
 
     const firecrawl = new Firecrawl({ apiKey: process.env.FIRECRAWL_API_KEY });
     const document = await firecrawl.scrape(parsedUrl.toString(), {
       formats: ["markdown"],
       onlyMainContent: true,
-      timeout: 30_000,
+      timeout: EXTRACTION_TIMEOUT_MS,
     });
     const markdown = typeof document?.markdown === "string" ? document.markdown : "";
 
-    if (!markdown) throw new Error("No webpage content returned");
+    if (!markdown) {
+      throw new Error("No webpage content returned");
+    }
 
     return {
       type: "documentation",
@@ -45,11 +50,15 @@ export const extractWebpage = async (url) => {
 
 export const documentationSearch = async (state) => {
   const url = extractUrl(state.prompt);
-  if (!url) return null;
+  if (!url) {
+    return null;
+  }
+
+  const toolResult = await extractWebpage(url);
 
   return {
     ...state,
-    toolResult: await extractWebpage(url),
+    toolResult,
     searchResults: [],
     images: [],
   };

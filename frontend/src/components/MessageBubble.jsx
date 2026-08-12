@@ -5,6 +5,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Check, Code2, Copy, Eye, Pencil, RefreshCw, Share } from "lucide-react";
 import { Children, isValidElement, useState } from "react";
+import GeneratedImageCard from "./GeneratedImageCard";
 
 function InlineCode({ children }) {
   const text = String(children ?? "");
@@ -80,7 +81,7 @@ function CodeBlock({ children }) {
   );
 }
 
-function MessageBubble({ role, content, images = [], artifact, artifactActive, canRegenerate, isGenerating, onEdit, onRegenerate, onOpenArtifact }) {
+function MessageBubble({ role, content, images = [], imagePrompt, artifact, artifactActive, canRegenerate, isGenerating, onEdit, onRegenerate, onOpenArtifact }) {
   const isUser = role === "user";
   const hasArtifact = !isUser && Array.isArray(artifact?.files) && artifact.files.length > 0;
   const [copied, setCopied] = useState(false);
@@ -100,7 +101,7 @@ function MessageBubble({ role, content, images = [], artifact, artifactActive, c
   };
 
   return (
-    <div className={`group mx-auto flex w-full max-w-3xl ${isUser ? "mb-10 justify-end" : "mb-8 justify-start"}`}>
+    <div className={`group mx-auto flex w-full ${!isUser && images.length ? "max-w-5xl" : "max-w-3xl"} ${isUser ? "mb-10 justify-end" : "mb-8 justify-start"}`}>
       <div className={`relative text-[15px] leading-relaxed ${isUser
         ? "max-w-[85%] rounded-2xl bg-[var(--sphere-user)] px-4 py-2.5 text-white transition-colors hover:bg-[var(--sphere-user-hover)]"
         : "w-full text-[var(--sphere-text)]"
@@ -156,20 +157,7 @@ function MessageBubble({ role, content, images = [], artifact, artifactActive, c
             {typeof content === "string" ? content : ""}
           </ReactMarkdown>
         )}
-        {!isUser && Array.isArray(images) && images.length > 0 && (
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {images.map((src, index) => (
-              <a key={`${src}-${index}`} href={src} target="_blank" rel="noreferrer">
-                <img
-                  src={src}
-                  alt={`Search result ${index + 1}`}
-                  loading="lazy"
-                  className="max-h-80 w-full rounded-xl border border-white/10 object-cover"
-                />
-              </a>
-            ))}
-          </div>
-        )}
+        {!isUser && images.length > 0 && <div className="mt-4 flex flex-col gap-5">{images.map((image, index) => { const src = typeof image === "string" ? image : image?.url; return src ? <GeneratedImageCard key={`${index}-${src}`} src={src} index={index} prompt={imagePrompt} primary={index === 0} isGenerating={isGenerating} onRegenerate={canRegenerate ? onRegenerate : null} /> : null; })}</div>}
         {hasArtifact && (
           <button
             type="button"
@@ -209,7 +197,7 @@ function MessageBubble({ role, content, images = [], artifact, artifactActive, c
               {copied ? <Check size={15} /> : <Copy size={15} />}
             </button>
             {onEdit && <button type="button" onClick={onEdit} disabled={isGenerating} title="Edit previous message" aria-label="Edit previous message" className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-white/[0.07] hover:text-slate-200 disabled:opacity-40"><Pencil size={15} /></button>}
-            {canRegenerate && <button type="button" onClick={onRegenerate} disabled={isGenerating} title="Regenerate response" aria-label="Regenerate response" className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-white/[0.07] hover:text-slate-300 disabled:opacity-40"><RefreshCw size={15} /></button>}
+            {canRegenerate && images.length === 0 && <button type="button" onClick={onRegenerate} disabled={isGenerating} title="Regenerate response" aria-label="Regenerate response" className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-white/[0.07] hover:text-slate-300 disabled:opacity-40"><RefreshCw size={15} /></button>}
           </div>
         )}
       </div>

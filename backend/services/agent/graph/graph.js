@@ -4,12 +4,13 @@ import { router } from "./router.js";
 import { chatAgent } from "../agents/chat.agent.js";
 import { searchAgent } from "../agents/search.agent.js";
 import { codingAgent } from "../agents/coding.agent.js";
+import { visionAgent } from "../agents/vision.agent.js";
 
 const agentNodes = {
   chat: chatAgent,
   search: searchAgent,
   coding: codingAgent,
-  vision: chatAgent,
+  vision: visionAgent,
   pdf: chatAgent,
   ppt: chatAgent,
 };

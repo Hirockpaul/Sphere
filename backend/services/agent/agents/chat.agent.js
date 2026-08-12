@@ -1,5 +1,10 @@
 import { getModel } from "../config/llmModel.js";
-import { getMemory } from "../config/memory.js";
+import { separateSystemMessages } from "../utils/modelMessages.js";
+
+const loadConversationMemory = async (...args) => {
+  const { getMemory } = await import("../config/memory.js");
+  return getMemory(...args);
+};
 
 const getTextContent = (content) => {
   if (typeof content === "string") return content;
@@ -11,12 +16,12 @@ const getTextContent = (content) => {
     .join("\n");
 };
 
-export const chatAgent = async (state) => {
-  const llm = await getModel("chat");
+export const chatAgent = async (state, dependencies = {}) => {
+  const llm = await (dependencies.getModel || getModel)("chat");
 
   // Get previous conversation history
-  const history = await getMemory(state.conversationId, state.userId);
-  const previousMessages = Array.isArray(history) ? history : [];
+  const history = await (dependencies.getMemory || loadConversationMemory)(state.conversationId, state.userId);
+  const { systemContent: memoryInstructions, conversation: previousMessages } = separateSystemMessages(history);
   const lastMessage = previousMessages.at(-1);
   const lastContent = getTextContent(lastMessage?.content).trim();
   const includesCurrentPrompt =
@@ -77,6 +82,8 @@ Formatting:
 - Use fenced code blocks with language tags for code.
 - Keep paragraphs short and readable.
 - Avoid unnecessary walls of text.
+
+${memoryInstructions.length ? `Additional memory context:\n${memoryInstructions.join("\n\n")}` : ""}
 `;
 
   const messages = [

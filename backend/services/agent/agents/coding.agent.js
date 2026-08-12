@@ -2,6 +2,7 @@ import { getModel } from "../config/llmModel.js";
 import { detectCodingIntent } from "../tools/coding/codingIntent.js";
 import { codingFallbackResponseSchema, codingResponseSchema, parseCodingResponse } from "../tools/coding/codingSchema.js";
 import { requiresCodingResearch, researchCodingRequest } from "../tools/coding/codingResearch.js";
+import { separateSystemMessages } from "../utils/modelMessages.js";
 
 const loadConversationMemory = async (...args) => {
   const { getCodingMemory } = await import("../config/memory.js");
@@ -169,16 +170,20 @@ export const codingAgent = async (state, dependencies = {}) => {
     if (process.env.NODE_ENV !== "production") console.error("Coding Agent memory unavailable:", error.message);
   }
   history = withoutDuplicatePrompt(history, prompt).slice(-6);
+  const { systemContent: historyInstructions, conversation: conversationHistory } = separateSystemMessages(history);
   timings.memory = now() - memoryStartedAt;
   timings.research = researchContext ? timings.memory : 0;
 
   const messages = [
-    { role: "system", content: buildCodingSystemPrompt(codingIntent) },
-    ...history,
-    ...(researchContext ? [{
+    {
       role: "system",
-      content: `Current external documentation for this request follows. Use only relevant facts and do not copy prose unnecessarily.\n\n${researchContext}`,
-    }] : []),
+      content: [
+        buildCodingSystemPrompt(codingIntent),
+        ...historyInstructions,
+        ...(researchContext ? [`Current external documentation for this request follows. Use only relevant facts and do not copy prose unnecessarily.\n\n${researchContext}`] : []),
+      ].join("\n\n"),
+    },
+    ...conversationHistory,
     { role: "user", content: prompt },
   ];
 
@@ -212,7 +217,7 @@ export const codingAgent = async (state, dependencies = {}) => {
           timings.llm += now() - fallbackStartedAt;
         } else if (attempt === 0 && isStructuredOutputError(error)) {
           messages.push({
-            role: "system",
+            role: "user",
             content: "Correct the previous response to satisfy the schema. Return complete structured data only.",
           });
           continue;
@@ -243,7 +248,7 @@ export const codingAgent = async (state, dependencies = {}) => {
           ? rawResponse.slice(0, 12_000)
           : JSON.stringify(rawResponse).slice(0, 12_000);
         messages.push({
-          role: "system",
+          role: "user",
           content: `Correct this invalid response to satisfy the schema. Return complete structured data only.\n\n${invalidOutput}`,
         });
       }

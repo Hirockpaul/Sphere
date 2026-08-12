@@ -32,7 +32,12 @@ const resolveLocation = (prompt) => {
   const explicitTimeZone = Intl.supportedValuesOf("timeZone")
     .find((timeZone) => query.includes(timeZone.toLowerCase()));
 
-  if (explicitTimeZone) return { location: explicitTimeZone, timeZone: explicitTimeZone };
+  if (explicitTimeZone) {
+    return {
+      location: explicitTimeZone,
+      timeZone: explicitTimeZone,
+    };
+  }
 
   for (const [location, timeZone] of LOCATION_TIMEZONES) {
     if (query.includes(location)) {

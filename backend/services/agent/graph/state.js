@@ -14,4 +14,7 @@ export const AgentState = Annotation.Root({
     artifacts:Annotation(),
     codingIntent:Annotation(),
     codingResponse:Annotation(),
+    imageIntent:Annotation(),
+    imagePrompt:Annotation(),
+    sourceImage:Annotation(),
 })

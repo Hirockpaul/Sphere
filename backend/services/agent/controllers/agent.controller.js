@@ -18,12 +18,18 @@ export const agent = async (req, res) => {
             messageId,
             assistantMessageId,
             agent = req.body.agentMode || "auto",
+            sourceImage,
         } = req.body
         const userId = req.headers["x-user-id"];
         const cleanPrompt = typeof prompt === "string" ? prompt.trim() : "";
 
         if (!cleanPrompt || !conversationId || !userId) {
             return res.status(400).json({ message: "Prompt and conversation are required" });
+        }
+        let validatedSourceImage;
+        if (sourceImage != null) {
+            if (!/^image\/(png|jpeg|webp)$/.test(sourceImage?.mimeType || "") || typeof sourceImage?.data !== "string" || sourceImage.data.length > 14_000_000) return res.status(400).json({ message: "Attach a valid PNG, JPEG, or WebP image up to 10 MB" });
+            validatedSourceImage = { mimeType: sourceImage.mimeType, data: sourceImage.data };
         }
 
         let userMessage;
@@ -56,6 +62,7 @@ export const agent = async (req, res) => {
             conversationId,
             userId,
             agent,
+            sourceImage: validatedSourceImage,
         })
         const response = result.aiResponse
         const images = Array.isArray(result.images) ? result.images : []
@@ -86,6 +93,7 @@ export const agent = async (req, res) => {
            response,
            images,
            agent: result.agent,
+           ...(result.agent === "image" ? { image: { intent: result.imageIntent } } : {}),
            ...(result.agent === "coding" ? {
                codingIntent: result.codingIntent,
                codingResponse: result.codingResponse,
@@ -99,7 +107,7 @@ export const agent = async (req, res) => {
     } catch (error) {
         const upstreamMessage = error.response?.data?.message || error.response?.data?.error;
         console.error("Agent request failed:", upstreamMessage || error.message);
-        return res.status(error.response?.status || 500).json({
+        return res.status(error.status || error.response?.status || 500).json({
             message: upstreamMessage || error.message || "Unable to process the message",
         });
     }
