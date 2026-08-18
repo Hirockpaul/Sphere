@@ -20,8 +20,8 @@ app.use(morgan("dev"))
 app.use(cookieParser());
 app.use("/auth", proxy(process.env.AUTH_SERVICE_URL));
 app.use("/chat", protect, proxyWithHeader(process.env.CHAT_SERVICE_URL));
-app.use("/agents", protect, proxyWithHeader(process.env.AGENTS_SERVICE_URL));
-app.use("/billing", protect, proxyWithHeader(process.env.BILLING_SERVICE_URL));
+app.use("/agents", protect, proxyWithHeader(process.env.AGENTS_SERVICE_URL, { forwardSession: true }));
+app.use("/billing", protect, proxyWithHeader(process.env.BILLING_SERVICE_URL, { forwardSession: true }));
 app.get("/me", protect, getCurrentUser);
 
 

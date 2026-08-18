@@ -3,6 +3,7 @@ import { app } from "../config/firebase.js";
 import User from "../models/user.model.js";
 import {
   deleteSession,
+  getSession,
   saveSession,
 } from "../../../shared/redis/session-store.js";
 
@@ -30,11 +31,7 @@ async function createUserSession({ idToken, decodedToken, name }) {
     { returnDocument: "after", upsert: true, runValidators: true },
   );
 
-  await saveSession(
-    sessionId,
-    user,
-    SESSION_DURATION_SECONDS,
-  );
+  await saveSession(sessionId, user, SESSION_DURATION_SECONDS);
 
   return { sessionId, user };
 }
@@ -119,7 +116,6 @@ export const logout = async (req, res) => {
         firebaseAuth.revokeRefreshTokens(decodedSession.uid),
       ]);
     }
-
   } catch (error) {
     console.error("Logout cleanup failed:", error);
     message = "Logged out locally";
@@ -127,4 +123,124 @@ export const logout = async (req, res) => {
 
   res.clearCookie("sessionId", COOKIE_OPTIONS);
   return res.status(200).json({ message });
+};
+
+export const updateUserPayment = async (req, res) => {
+  try {
+    const expectedSecret = process.env.BILLING_INTERNAL_SECRET;
+
+    if (!expectedSecret || req.headers["x-billing-secret"] !== expectedSecret) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const { plan, credits, userId, checkoutSessionId } = req.body;
+    const sessionId = req.cookies?.sessionId;
+    const sessionUser = sessionId ? await getSession(sessionId) : null;
+
+    if (
+      !sessionUser ||
+      String(sessionUser._id || sessionUser.userId) !== String(userId)
+    ) {
+      return res.status(401).json({ message: "Invalid billing session" });
+    }
+
+    const invalidPlanUpdate =
+      !checkoutSessionId ||
+      !["starter", "pro"].includes(plan) ||
+      !Number.isInteger(credits) ||
+      credits <= 0;
+
+    if (invalidPlanUpdate) {
+      return res.status(400).json({ message: "Invalid plan update" });
+    }
+
+    const planDays = plan === "pro" ? 60 : 30;
+    const planExpiresAt = new Date(
+      Date.now() + planDays * 24 * 60 * 60 * 1000,
+    );
+    let user = await User.findOneAndUpdate(
+      { _id: userId, processedPaymentSessions: { $ne: checkoutSessionId } },
+      {
+        $set: { plan, planExpiresAt },
+        $inc: { credits, totalCredits: credits },
+        $addToSet: { processedPaymentSessions: checkoutSessionId },
+      },
+      { new: true, runValidators: true },
+    );
+    if (!user) {
+      user = await User.findById(userId);
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await saveSession(sessionId, user, SESSION_DURATION_SECONDS);
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
+    console.error("Update user payment failed:", error);
+    return res.status(500).json({ message: "Unable to update user plan" });
+  }
+};
+
+export const applyCreditDeduction = async (req, res) => {
+  try {
+    const expectedSecret = process.env.BILLING_INTERNAL_SECRET;
+
+    if (!expectedSecret || req.headers["x-billing-secret"] !== expectedSecret) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const sessionId = req.cookies?.sessionId;
+    const { userId, agent, cost } = req.body;
+
+    if (!sessionId || !userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!agent || !Number.isInteger(cost) || cost <= 0) {
+      return res.status(400).json({ message: "Invalid deduction" });
+    }
+
+    const sessionUser = await getSession(sessionId);
+
+    if (
+      !sessionUser ||
+      String(sessionUser._id || sessionUser.userId) !== String(userId)
+    ) {
+      return res.status(401).json({ message: "Invalid or expired session" });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { _id: userId, credits: { $gte: cost } },
+      { $inc: { credits: -cost } },
+      { new: true, runValidators: true },
+    );
+
+    if (!user) {
+      const existingUser = await User.findById(userId).select("credits");
+
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      return res.status(402).json({
+        message: "Insufficient credits",
+        required: cost,
+        credits: existingUser.credits,
+      });
+    }
+
+    await saveSession(sessionId, user, SESSION_DURATION_SECONDS);
+    return res.status(200).json({
+      success: true,
+      agent,
+      deducted: cost,
+      credits: user.credits,
+      user,
+    });
+  } catch (error) {
+    console.error("Credit deduction failed:", error);
+    return res.status(500).json({ message: "Unable to deduct credits" });
+  }
 };

@@ -7,6 +7,7 @@ import {
     clearUserMemory,
 } from "../config/memory.js";
 import { getFromS3 } from "../utils/getFromS3.js";
+import { deductCredits } from "../utils/deductCredits.js";
 
 export const agent = async (req, res) => {
     try {
@@ -22,9 +23,10 @@ export const agent = async (req, res) => {
             sourceImage,
         } = req.body
         const userId = req.headers["x-user-id"];
+        const sessionId = req.headers["x-session-id"];
         const cleanPrompt = typeof prompt === "string" ? prompt.trim() : "";
 
-        if (!cleanPrompt || !conversationId || !userId) {
+        if (!cleanPrompt || !conversationId || !userId || !sessionId) {
             return res.status(400).json({ message: "Prompt and conversation are required" });
         }
         let validatedSourceImage;
@@ -96,6 +98,12 @@ export const agent = async (req, res) => {
             throw new Error("The selected agent returned an empty response");
         }
 
+        const creditResult = await deductCredits({
+            userId,
+            sessionId,
+            agent: result.agent,
+        });
+
         const { data: savedAssistant } = await axios.post(`${process.env.CHAT_SERVICE}/messages`, {
             conversationId, role: "assistant", content: response, images, artifact, pdf, presentation
         }, { headers: { "x-user-id": userId } })
@@ -123,6 +131,8 @@ export const agent = async (req, res) => {
                    ? { ...savedAssistant.message, presentation: { ...presentation, downloadUrl: result.presentationArtifact.downloadUrl } }
                : savedAssistant.message,
            conversation: savedAssistant.conversation || conversation,
+           credits: creditResult.credits,
+           user: creditResult.user,
        });
 
 

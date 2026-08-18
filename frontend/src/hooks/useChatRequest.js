@@ -11,6 +11,7 @@ import {
   setMessages,
 } from "../redux/messageSlice";
 import { updateConversation } from "../redux/conversationSlice";
+import { setUser } from "../redux/userSlice";
 
 export default function useChatRequest() {
   const dispatch = useDispatch();
@@ -91,6 +92,7 @@ export default function useChatRequest() {
         dispatch(addMessage(assistantMessage));
       }
       if (data.conversation) dispatch(updateConversation(data.conversation));
+      if (data.user) dispatch(setUser(data.user));
       dispatch(setGeneration({ isGenerating: false }));
       return true;
     } catch (error) {
