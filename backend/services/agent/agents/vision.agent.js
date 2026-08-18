@@ -6,7 +6,7 @@ import { uploadToS3 } from "../utils/uploadToS3.js";
 
 const IMAGE_PROVIDER_URL = "https://image.pollinations.ai/prompt";
 const IMAGE_REQUEST_TIMEOUT_MS = 120_000;
-const SIGNED_URL_EXPIRATION_SECONDS = 24 * 60 * 60;
+const SIGNED_URL_EXPIRATION_SECONDS =  24*60*60 ;
 
 const IMAGE_EXTENSIONS = {
   "image/jpeg": "jpg",

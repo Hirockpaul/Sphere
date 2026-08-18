@@ -39,8 +39,10 @@ test("does not claim general or search prompts are deterministically coding", ()
 });
 
 test("deterministic and explicit coding routes avoid the router model", async () => {
-  const automaticRoute = await router({ prompt: codingPrompts[0], agent: "auto" });
-  const explicitRoute = await router({ prompt: "anything", agent: "coding" });
+  const automaticRoute = await router
+  ({ prompt: codingPrompts[0], agent: "auto" });
+  const explicitRoute = await router
+  ({ prompt: "anything", agent: "coding" });
 
   assert.deepEqual(automaticRoute, { agent: "coding" });
   assert.deepEqual(explicitRoute, { agent: "coding" });

@@ -3,9 +3,10 @@ import remarkGfm from "remark-gfm";
 import Highlighter from "react-highlight-words";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, Code2, Copy, Eye, Pencil, RefreshCw, Share } from "lucide-react";
+import { Check, Code2, Copy, Eye, FileText, Pencil, Presentation, RefreshCw, Share } from "lucide-react";
 import { Children, isValidElement, useState } from "react";
 import GeneratedImageCard from "./GeneratedImageCard";
+import api from "../../utils/axios";
 
 function InlineCode({ children }) {
   const text = String(children ?? "");
@@ -81,7 +82,69 @@ function CodeBlock({ children }) {
   );
 }
 
-function MessageBubble({ role, content, images = [], imagePrompt, artifact, artifactActive, canRegenerate, isGenerating, onEdit, onRegenerate, onOpenArtifact }) {
+function PdfArtifact({ pdf }) {
+  const [opening, setOpening] = useState(false);
+
+  const view = async () => {
+    if (opening) return;
+    setOpening(true);
+    try {
+      const { data } = await api.post("/agents/pdf-url", { key: pdf.key, disposition: "inline" });
+      window.open(data.downloadUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error("Failed to create PDF view link:", error);
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={view}
+      disabled={opening}
+      aria-label={`Open ${pdf.filename || pdf.title || "PDF file"}`}
+      className="group/pdf mt-4 flex min-h-14 w-full items-center gap-3 rounded-2xl border border-white/[0.16] bg-[#242424] px-4 py-3 text-left transition hover:border-white/25 hover:bg-[#2a2a2a] disabled:cursor-wait"
+    >
+      <span className="relative grid h-8 w-8 shrink-0 place-items-center text-red-500">
+        <FileText size={22} strokeWidth={1.8} />
+        <span className="absolute bottom-0 rounded-sm bg-[#242424] px-0.5 text-[7px] font-bold leading-3 text-red-400">PDF</span>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold text-white">{pdf.filename || pdf.title}</span>
+        <span className="mt-0.5 block text-[11px] font-medium uppercase tracking-wide text-slate-400">PDF</span>
+      </span>
+      <span className="shrink-0 translate-x-1 text-xs font-medium text-slate-300 opacity-0 transition group-hover/pdf:translate-x-0 group-hover/pdf:opacity-100 group-focus-visible/pdf:translate-x-0 group-focus-visible/pdf:opacity-100">
+        {opening ? "Opening…" : "Open file"}
+      </span>
+    </button>
+  );
+}
+
+function PresentationArtifact({ presentation }) {
+  const [opening, setOpening] = useState(false);
+  const open = async () => {
+    if (opening) return;
+    setOpening(true);
+    try {
+      const { data } = await api.post("/agents/presentation-url", { key: presentation.key, filename: presentation.filename });
+      window.location.assign(data.downloadUrl);
+    } catch (error) {
+      console.error("Failed to open presentation:", error);
+    } finally {
+      setOpening(false);
+    }
+  };
+  return (
+    <button type="button" onClick={open} disabled={opening} aria-label={`Open ${presentation.filename || "presentation"}`} className="group/ppt mt-4 flex min-h-14 w-full items-center gap-3 rounded-2xl border border-white/[0.16] bg-[#242424] px-4 py-3 text-left transition hover:border-white/25 hover:bg-[#2a2a2a] disabled:cursor-wait">
+      <span className="relative grid h-8 w-8 shrink-0 place-items-center text-orange-400"><Presentation size={22} strokeWidth={1.8} /><span className="absolute bottom-0 rounded-sm bg-[#242424] px-0.5 text-[7px] font-bold leading-3 text-orange-300">PPT</span></span>
+      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{presentation.filename || presentation.title}</span><span className="mt-0.5 block text-[11px] font-medium uppercase tracking-wide text-slate-400">PowerPoint presentation</span></span>
+      <span className="shrink-0 translate-x-1 text-xs font-medium text-slate-300 opacity-0 transition group-hover/ppt:translate-x-0 group-hover/ppt:opacity-100 group-focus-visible/ppt:translate-x-0 group-focus-visible/ppt:opacity-100">{opening ? "Opening…" : "Open file"}</span>
+    </button>
+  );
+}
+
+function MessageBubble({ role, content, images = [], imagePrompt, artifact, pdf, presentation, artifactActive, canRegenerate, isGenerating, onEdit, onRegenerate, onOpenArtifact }) {
   const isUser = role === "user";
   const hasArtifact = !isUser && Array.isArray(artifact?.files) && artifact.files.length > 0;
   const [copied, setCopied] = useState(false);
@@ -158,6 +221,8 @@ function MessageBubble({ role, content, images = [], imagePrompt, artifact, arti
           </ReactMarkdown>
         )}
         {!isUser && images.length > 0 && <div className="mt-4 flex flex-col gap-5">{images.map((image, index) => { const src = typeof image === "string" ? image : image?.url; return src ? <GeneratedImageCard key={`${index}-${src}`} src={src} index={index} prompt={imagePrompt} primary={index === 0} isGenerating={isGenerating} onRegenerate={canRegenerate ? onRegenerate : null} /> : null; })}</div>}
+        {!isUser && pdf?.key && <PdfArtifact pdf={pdf} />}
+        {!isUser && presentation?.key && <PresentationArtifact presentation={presentation} />}
         {hasArtifact && (
           <button
             type="button"

@@ -11,6 +11,7 @@ loadEnvironment({ path: `${serviceDirectory}.env` });
 loadEnvironment({ path: `${serviceDirectory}.env.example`, quiet: true });
 
 const port = process.env.PORT || 8002;
+console.info(`[Agent] Gemini model: ${process.env.GEMINI_MODEL || "gemini-3-flash-preview"}`);
 
 const app = express();
 app.use(express.json({ limit: "15mb" }));

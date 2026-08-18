@@ -72,9 +72,23 @@ export default function useChatRequest() {
               files: data.codingResponse.files,
             }
           : undefined;
-        dispatch(addMessage(artifact && !data.assistantMessage.artifact
-          ? { ...data.assistantMessage, artifact }
-          : data.assistantMessage));
+        const pdf = data.pdf?.key
+          ? {
+              key: data.pdf.key,
+              filename: data.pdf.filename,
+              title: data.pdf.title,
+            }
+          : undefined;
+        const presentation = data.presentation?.key
+          ? { key: data.presentation.key, filename: data.presentation.filename, title: data.presentation.title, slides: data.presentation.slides }
+          : undefined;
+        const assistantMessage = {
+          ...data.assistantMessage,
+          ...(artifact && !data.assistantMessage.artifact ? { artifact } : {}),
+          ...(pdf && !data.assistantMessage.pdf ? { pdf } : {}),
+          ...(presentation && !data.assistantMessage.presentation ? { presentation } : {}),
+        };
+        dispatch(addMessage(assistantMessage));
       }
       if (data.conversation) dispatch(updateConversation(data.conversation));
       dispatch(setGeneration({ isGenerating: false }));

@@ -49,6 +49,8 @@ function MessageList() {
                             images={msg?.images}
                             imagePrompt={previousUser?.content}
                             artifact={msg?.artifact}
+                            pdf={msg?.pdf}
+                            presentation={msg?.presentation}
                             artifactActive={(msg?._id || msg?.messageId) === activeArtifactMessageId}
                             onOpenArtifact={() => dispatch(selectArtifact(msg?._id || msg?.messageId))}
                             isGenerating={isGenerating}
@@ -62,13 +64,15 @@ function MessageList() {
                                 mode: 'regenerate',
                                 assistantMessageId: msg._id,
                                 ...(Array.isArray(msg.images) && msg.images.length ? { agent: 'image' } : {}),
+                                ...(msg.pdf?.key ? { agent: 'pdf' } : {}),
+                                ...(msg.presentation?.key ? { agent: 'ppt' } : {}),
                             })}
                         />
                     )})}
                     {isGenerating && (
                         <div className='mx-auto flex w-full max-w-4xl justify-start' role='status' aria-live='polite'>
                             <div className='flex items-center gap-2 px-1 py-3 text-sm text-[var(--sphere-text-secondary)]'>
-                                <span>{generationAgent === "coding" ? "Sphere is building" : generationAgent === "image" ? "Sphere is creating" : "Sphere is thinking"}</span>
+                                <span>{generationAgent === "coding" ? "Sphere is building" : generationAgent === "image" ? "Sphere is creating" : generationAgent === "pdf" ? "Sphere is preparing your PDF" : generationAgent === "ppt" ? "Sphere is designing your presentation" : "Sphere is thinking"}</span>
                                 <span className='flex gap-1' aria-hidden='true'><i className='thinking-dot'/><i className='thinking-dot'/><i className='thinking-dot'/></span>
                             </div>
                         </div>

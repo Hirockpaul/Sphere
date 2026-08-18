@@ -6,6 +6,7 @@ import {
     clearMemory,
     clearUserMemory,
 } from "../config/memory.js";
+import { getFromS3 } from "../utils/getFromS3.js";
 
 export const agent = async (req, res) => {
     try {
@@ -75,13 +76,28 @@ export const agent = async (req, res) => {
                 files: result.codingResponse.files,
             }
             : undefined
+        const pdf = result.agent === "pdf" && result.pdfArtifact?.key
+            ? {
+                key: result.pdfArtifact.key,
+                filename: result.pdfArtifact.filename,
+                title: result.pdfArtifact.title,
+            }
+            : undefined
+        const presentation = result.agent === "ppt" && result.presentationArtifact?.key
+            ? {
+                key: result.presentationArtifact.key,
+                filename: result.presentationArtifact.filename,
+                title: result.presentationArtifact.title,
+                slides: result.presentationArtifact.slides,
+            }
+            : undefined
 
         if (typeof response !== "string" || !response.trim()) {
             throw new Error("The selected agent returned an empty response");
         }
 
         const { data: savedAssistant } = await axios.post(`${process.env.CHAT_SERVICE}/messages`, {
-            conversationId, role: "assistant", content: response, images, artifact
+            conversationId, role: "assistant", content: response, images, artifact, pdf, presentation
         }, { headers: { "x-user-id": userId } })
         await addMessage(conversationId, "assistant", response)
         await addUserMessages(userId, conversationId, [
@@ -98,8 +114,14 @@ export const agent = async (req, res) => {
                codingIntent: result.codingIntent,
                codingResponse: result.codingResponse,
            } : {}),
+           ...(result.agent === "pdf" && result.pdfArtifact ? { pdf: result.pdfArtifact } : {}),
+           ...(result.agent === "ppt" && result.presentationArtifact ? { presentation: result.presentationArtifact } : {}),
            userMessage,
-           assistantMessage: savedAssistant.message,
+           assistantMessage: result.pdfArtifact?.downloadUrl
+               ? { ...savedAssistant.message, pdf: { ...pdf, downloadUrl: result.pdfArtifact.downloadUrl } }
+               : result.presentationArtifact?.downloadUrl
+                   ? { ...savedAssistant.message, presentation: { ...presentation, downloadUrl: result.presentationArtifact.downloadUrl } }
+               : savedAssistant.message,
            conversation: savedAssistant.conversation || conversation,
        });
 
@@ -112,3 +134,38 @@ export const agent = async (req, res) => {
         });
     }
 }
+
+export const getPdfUrl = async (req, res) => {
+    const key = typeof req.body?.key === "string" ? req.body.key.trim() : "";
+    const filename = typeof req.body?.filename === "string" ? req.body.filename.trim() : "";
+    const shouldDownload = req.body?.disposition !== "inline";
+    if (!key.startsWith("generated-pdfs/") || key.includes("..")) {
+        return res.status(400).json({ message: "A valid PDF object key is required" });
+    }
+    try {
+        const safeFilename = shouldDownload && /^[a-z0-9][a-z0-9-]*\.pdf$/.test(filename)
+            ? filename
+            : undefined;
+        const downloadUrl = await getFromS3(key, 24 * 60 * 60, safeFilename);
+        return res.status(200).json({ downloadUrl });
+    } catch (error) {
+        console.error("PDF URL generation failed:", error);
+        return res.status(500).json({ message: "Unable to create a PDF download link" });
+    }
+};
+
+export const getPresentationUrl = async (req, res) => {
+    const key = typeof req.body?.key === "string" ? req.body.key.trim() : "";
+    const filename = typeof req.body?.filename === "string" ? req.body.filename.trim() : "";
+    if (!key.startsWith("generated-presentations/") || key.includes("..")) {
+        return res.status(400).json({ message: "A valid presentation object key is required" });
+    }
+    try {
+        const safeFilename = /^[a-z0-9][a-z0-9-]*\.pptx$/.test(filename) ? filename : undefined;
+        const downloadUrl = await getFromS3(key, 24 * 60 * 60, safeFilename, "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+        return res.status(200).json({ downloadUrl });
+    } catch (error) {
+        console.error("Presentation URL generation failed:", error);
+        return res.status(500).json({ message: "Unable to create a presentation download link" });
+    }
+};

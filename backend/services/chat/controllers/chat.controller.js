@@ -112,6 +112,31 @@ export const saveMessage = async (req, res) => {
                 files: artifactFiles,
             }
             : undefined;
+        const pdfInput = req.body.pdf;
+        const pdf = role === "assistant"
+            && typeof pdfInput?.key === "string"
+            && pdfInput.key.startsWith("generated-pdfs/")
+            && typeof pdfInput?.filename === "string"
+            && typeof pdfInput?.title === "string"
+            ? {
+                key: pdfInput.key.trim(),
+                filename: pdfInput.filename.trim().slice(0, 240),
+                title: pdfInput.title.trim().slice(0, 240),
+            }
+            : undefined;
+        const presentationInput = req.body.presentation;
+        const presentation = role === "assistant"
+            && typeof presentationInput?.key === "string"
+            && presentationInput.key.startsWith("generated-presentations/")
+            && typeof presentationInput?.filename === "string"
+            && typeof presentationInput?.title === "string"
+            ? {
+                key: presentationInput.key.trim(),
+                filename: presentationInput.filename.trim().slice(0, 240),
+                title: presentationInput.title.trim().slice(0, 240),
+                ...(Array.isArray(presentationInput.slides) ? { slides: presentationInput.slides.slice(0, 12) } : {}),
+            }
+            : undefined;
         const conversation = await withMongoRetry(() => Conversation.exists({ _id: conversationId, userId }));
 
         if (!conversation) {
@@ -123,7 +148,7 @@ export const saveMessage = async (req, res) => {
             return res.status(400).json({ message: "A valid role and message content are required" });
         }
 
-        const message = await withMongoRetry(() => Message.create({ conversationId, role, content: cleanContent, images, artifact }));
+        const message = await withMongoRetry(() => Message.create({ conversationId, role, content: cleanContent, images, artifact, pdf, presentation }));
         const generatedTitle = role === "user" ? generateConversationTitle(cleanContent) : null;
         if (generatedTitle) {
             await withMongoRetry(() => Conversation.findOneAndUpdate(

@@ -5,14 +5,16 @@ import { chatAgent } from "../agents/chat.agent.js";
 import { searchAgent } from "../agents/search.agent.js";
 import { codingAgent } from "../agents/coding.agent.js";
 import { visionAgent } from "../agents/vision.agent.js";
+import { pdfAgent } from "../agents/pdf.agent.js";
+import { pptAgent } from "../agents/ppt.agent.js";
 
-const agentNodes = {
+export const agentNodes = {
   chat: chatAgent,
   search: searchAgent,
   coding: codingAgent,
   vision: visionAgent,
-  pdf: chatAgent,
-  ppt: chatAgent,
+  pdf: pdfAgent,
+  ppt: pptAgent,
 };
 
 const workflow = new StateGraph(AgentState);

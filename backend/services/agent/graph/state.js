@@ -17,4 +17,6 @@ export const AgentState = Annotation.Root({
     imageIntent:Annotation(),
     imagePrompt:Annotation(),
     sourceImage:Annotation(),
+    pdfArtifact:Annotation(),
+    presentationArtifact:Annotation(),
 })

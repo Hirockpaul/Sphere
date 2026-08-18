@@ -12,6 +12,19 @@ const artifactSchema = new mongoose.Schema({
   files: { type: [artifactFileSchema], default: [] },
 }, { _id: false });
 
+const pdfSchema = new mongoose.Schema({
+  key: { type: String, required: true, trim: true, maxlength: 1024 },
+  filename: { type: String, required: true, trim: true, maxlength: 240 },
+  title: { type: String, required: true, trim: true, maxlength: 240 },
+}, { _id: false });
+
+const presentationSchema = new mongoose.Schema({
+  key: { type: String, required: true, trim: true, maxlength: 1024 },
+  filename: { type: String, required: true, trim: true, maxlength: 240 },
+  title: { type: String, required: true, trim: true, maxlength: 240 },
+  slides: { type: [mongoose.Schema.Types.Mixed], default: undefined },
+}, { _id: false });
+
 const messageSchema = new mongoose.Schema({
      conversationId: {
          type: mongoose.Schema.Types.ObjectId,
@@ -30,6 +43,14 @@ const messageSchema = new mongoose.Schema({
         images: { type: [String], default: [] },
         artifact: {
             type: artifactSchema,
+            default: undefined,
+        },
+        pdf: {
+            type: pdfSchema,
+            default: undefined,
+        },
+        presentation: {
+            type: presentationSchema,
             default: undefined,
         },
 },{

@@ -4,6 +4,7 @@ import { ChatOpenRouter } from "@langchain/openrouter";
 
 let groq;
 let gemini;
+let pptGemini;
 let openrouter;
 
 const getGroq = () => {
@@ -18,12 +19,21 @@ const getGroq = () => {
 
 const getGemini = () => {
   gemini ??= new ChatGoogleGenerativeAI({
-    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-    temperature: 0,
+    model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
     maxRetries: 2,
   });
 
   return gemini;
+};
+
+const getPptGemini = () => {
+  pptGemini ??= new ChatGoogleGenerativeAI({
+    model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
+    maxOutputTokens: Number(process.env.PPT_MAX_OUTPUT_TOKENS) || 16_384,
+    maxRetries: 2,
+    json: true,
+  });
+  return pptGemini;
 };
 
 const getOpenRouter = () => {
@@ -50,6 +60,13 @@ export const getModel = (agent) => {
 
     case "coding":
       return getOpenRouter();
+
+
+    case "pdf":
+      return getGemini();
+
+    case "ppt":
+      return getPptGemini();
 
     default:
       return getGemini();
