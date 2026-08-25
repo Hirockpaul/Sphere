@@ -1,163 +1,165 @@
-# Sphere Agent Service Architecture
+# Sphere AI
 
-This repository uses a graph-based agent workflow in the backend to route user prompts to the correct service agent using an LLM-based router. The `backend/services/agent` package contains the core agent orchestration, while the gateway forwards authenticated requests to the agents service.
+An AI workspace that brings conversations, coding, document analysis, web research, image generation, PDF generation, and PowerPoint creation into one application.
 
-## Architecture Overview
+Sphere uses a **multi-agent LangGraph architecture** to route requests to specialized AI agents.
 
-- `backend/gateway/index.js` receives frontend requests and proxies `/agents` requests to the agent service.
-- `backend/services/agent/index.js` starts the agents service.
-- `backend/services/agent/graph/graph.js` defines the workflow graph that routes requests from a start node through a router node to one of the specialized agent nodes.
-- `backend/services/agent/graph/router.js` uses an LLM prompt to decide which agent should handle the prompt.
-- `backend/services/agent/config/llmModel.js` selects the correct LLM model for each agent type.
-- `backend/services/agent/agents/*.agent.js` are the individual agent handler stubs for each task domain.
+Sphere can:
 
-## How the Workflow Connects
+* Chat, explain concepts, brainstorm, and answer general questions.
+* Generate, debug, refactor, review, and package code projects.
+* Analyze uploaded PDFs using RAG with Gemini embeddings and Qdrant.
+* Generate professional PDF documents.
+* Create PowerPoint presentations with charts, diagrams, tables, code, and visuals.
+* Generate and analyze images using Gemini and image-generation services.
+* Search the web using Tavily and Firecrawl for current information and research.
+* Remember conversation context using Redis and MongoDB.
+* Authenticate users with Firebase and secure HttpOnly session cookies.
 
-1. The frontend sends an authenticated request to the gateway at `/agents`.
-2. `backend/gateway/index.js` proxies the request to the `AGENTS_SERVICE_URL` configured in environment variables.
-3. The agents service loads its workflow graph from `backend/services/agent/graph/graph.js`.
-4. The graph starts at `_start_` and immediately transitions to the `router` node.
-5. The router node reads `state.prompt` and constructs a classification prompt for the LLM.
-6. The router invokes the model and returns a single agent label, such as `chat`, `search`, `coding`, `vision`, `pdf`, or `ppt`.
-7. The graph uses a conditional edge from the `router` node to the selected agent node.
-8. The selected agent node processes the request and finishes the workflow at `_end_`.
+## Stack
 
-## Graph Structure
+* React 19 + Vite + Tailwind CSS + Redux Toolkit.
+* Node.js + Express 5 with a service-oriented backend.
+* MongoDB + Mongoose for users, conversations, and messages.
+* Redis for sessions, memory, and agent rate limiting.
+* LangChain + LangGraph for AI orchestration.
+* Gemini, Groq, and OpenRouter for AI workloads.
+* Qdrant Cloud for PDF vector search and RAG.
+* Tavily + Firecrawl for web research.
+* AWS S3 for generated files and ImageKit for visuals.
+* PDFKit + PptxGenJS for document and presentation generation.
 
-File: `backend/services/agent/graph/graph.js`
+## Architecture
 
-- `StateGraph(agentState)` builds the workflow graph.
-- Nodes:
-  - `router`
-  - `search`
-  - `ppt`
-  - `pdf`
-  - `vision`
-  - `coding`
-  - `chat`
-- Edges:
-  - `_start_ -> router`
-  - `router -> chat|search|coding|vision|pdf|ppt` based on `state.agent`
-  - Each task node -> `_end_`
-
-The graph compiles into `export const graph = workflow.compile();`.
-
-## Router Logic
-
-File: `backend/services/agent/graph/router.js`
-
-- Imports `getModel` from `backend/services/agent/config/llmModel.js`.
-- Builds a prompt describing the available agent categories.
-- Uses the current state prompt:
-  - `User Query: ${state.prompt}`
-- Invokes the selected model via `llm.invoke(prompt)`.
-- Normalizes the result using `response.content.trim().toLowerCase()`.
-- Writes the result back to state as `agent`.
-
-The router is responsible for classifying the user request into one of the supported agent domains.
-
-## LLM Model Selection
-
-File: `backend/services/agent/config/llmModel.js`
-
-The `getModel(agent)` function chooses a model instance based on the requested agent:
-
-- `chat` -> `gemini`
-- `coding` -> `gemini`
-- `vision` -> `gemini`
-- `search` -> `groq`
-- `pdf` -> `groq`
-- `ppt` -> `groq`
-- default -> `gemini`
-
-Models:
-- `ChatGroq` for `search`, `pdf`, `ppt`
-- `ChatGoogleGenerativeAI` for `chat`, `coding`, `vision`
-
-This means the router can also use different LLM backends depending on the type of task.
-
-## Agent Handlers
-
-Files: `backend/services/agent/agents/*.agent.js`
-
-Current agent files:
-- `chat.agent.js`
-- `search.agent.js`
-- `coding.agent.js`
-- `vision.agent.js`
-- `pdf.agent.js`
-- `ppt.agent.js`
-
-Each agent exports an async function, for example:
-
-```js
-export const chatAgent = async (params) => {
-}
+```text
+React + Vite
+     │
+     ▼
+API Gateway :8000
+     │
+ ┌───┼────────────────┐
+ ▼   ▼                ▼
+Auth Chat         Agent Service
+:8001 :8002           :8003
+                       │
+                    LangGraph
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+      Gemini          Groq        OpenRouter
+        │
+      Qdrant
+        │
+        S3
 ```
 
-These handlers are the places to implement task-specific processing once the router selects the agent type.
+The frontend communicates with the API Gateway, which authenticates the user and forwards requests to the appropriate internal service.
 
-## State Definition
+## Setup
 
-File: `backend/services/agent/graph/state.js`
+1. Install Node.js, Docker Desktop, and MongoDB.
+2. Create the required Firebase, Gemini, Groq, OpenRouter, Qdrant, AWS, ImageKit, Tavily, and Firecrawl accounts/API keys.
+3. Start Redis:
 
-The graph state contains:
-- `prompt` — the original user query or request text
-- `aiResponse` — the final AI response or processed output
-- `agent` — the chosen agent label returned by the router
-
-## Gateway Connection
-
-File: `backend/gateway/index.js`
-
-- Uses `express-http-proxy` to forward `/agents` requests to the agents service.
-- Protects agents routes with `protect` middleware.
-- Uses environment variables:
-  - `AUTH_SERVICE_URL`
-  - `CHAT_SERVICE_URL`
-  - `AGENTS_SERVICE_URL`
-  - `FRONTEND_URL`
-
-This means the frontend never calls the agents service directly; it goes through the gateway.
-
-## Running the Agents Service
-
-The agents package is configured with:
-
-```json
-"scripts": {
-  "dev": "nodemon index.js"
-}
+```bash
+cd backend
+docker compose up -d redis
 ```
 
-Start the service with:
+4. Install dependencies in the frontend and backend services:
+
+```bash
+npm ci
+```
+
+5. Configure the required `.env` files for the gateway, auth, chat, agent, and frontend services.
+6. Start the backend services:
+
+```bash
+cd backend/services/auth
+npm run dev
+```
+
+```bash
+cd backend/services/chat
+npm run dev
+```
 
 ```bash
 cd backend/services/agent
 npm run dev
 ```
 
-## Important Notes
+```bash
+cd backend/gateway
+npm run dev
+```
 
-- The router currently returns only one agent label.
-- The workflow uses a compiled graph to map router output to a specific agent node.
-- The actual frontend request handler for the graph is not shown in the current codebase, so you will need to wire the compiled graph into an endpoint or controller to execute the workflow.
-- The current agent files are stubs and should be implemented with real logic for each service type.
+7. Start the frontend:
 
-## Recommended Workflow Implementation
+```bash
+cd frontend
+npm run dev
+```
 
-1. Receive a request with `prompt`.
-2. Create an initial graph state using `agentState`.
-3. Execute the compiled `graph` or call the `router` node directly.
-4. Based on `state.agent`, call the selected agent handler.
-5. Store the agent output in `aiResponse`.
-6. Return the completed state to the client.
+Open `http://localhost:5173`.
 
-## Summary
+## AI Modes
 
-The service agents work by using a graph-based orchestration model with:
-- a central router node that classifies requests via an LLM,
-- model selection tied to each agent type,
-- and a gateway proxy that forwards authenticated frontend traffic to the agents service.
+```text
+Auto
+Chat
+Coding
+PDF
+PPT
+Image
+Search
+```
 
-This README is meant to help you understand the current architecture and where to add the missing execution and agent logic.
+Auto mode uses deterministic detection and Gemini classification to select the appropriate agent.
+
+PDF and image uploads can also automatically activate internal capabilities such as `pdfRag` and `imageAnalyzer`.
+
+## Project Structure
+
+```text
+Sphere/
+├── frontend/
+├── backend/
+│   ├── gateway/
+│   ├── services/
+│   │   ├── auth/
+│   │   ├── chat/
+│   │   └── agent/
+│   └── shared/
+└── README.md
+```
+
+## Status
+
+Implemented:
+
+* Multi-agent LangGraph routing
+* Firebase authentication
+* MongoDB conversations
+* Redis sessions and memory
+* Coding artifacts
+* PDF generation and RAG
+* PowerPoint generation
+* Image generation and analysis
+* Web search
+* S3 artifact storage
+* Agent rate limiting
+
+Planned:
+
+* Billing and credits
+* Razorpay integration
+* Production-grade internal authentication
+* Complete production security hardening
+
+## Vision
+
+**One AI workspace for chat, coding, research, documents, PDFs, presentations, and images.**
+
+> Sphere can make mistakes. Verify important information.

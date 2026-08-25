@@ -11,24 +11,23 @@ import {
 } from "../redux/conversationSlice";
 
 const agentModes = [
-  { id: "auto", label: "Auto", icon: Zap },
-  { id: "chat", label: "Chat", icon: MessageSquare },
-  { id: "coding", label: "Coding", icon: Code2 },
-  { id: "pdf", label: "PDF", icon: FileText },
-  { id: "pdfRag", label: "PDF RAG", icon: FileText },
-  { id: "ppt", label: "PPT", icon: Presentation },
-  { id: "image", label: "Image", icon: ImageIcon },
-  { id: "imageAnalyzer", label: "Analyze Image", icon: ImageIcon },
-  { id: "search", label: "Search", icon: Globe2 },
+  { id: "auto", label: "Auto", icon: Zap, description: "Choose the best mode for your request." },
+  { id: "chat", label: "Chat", icon: MessageSquare, description: "Ask questions and explore ideas." },
+  { id: "coding", label: "Coding", icon: Code2, description: "Write, debug, explain, and improve code." },
+  { id: "pdf", label: "PDF", icon: FileText, description: "Create professional PDF documents." },
+  { id: "ppt", label: "PPT", icon: Presentation, description: "Create presentations, slides, and pitch decks." },
+  { id: "image", label: "Image", icon: ImageIcon, description: "Generate and work with images." },
+  { id: "search", label: "Search", icon: Globe2, description: "Research information from the web." },
 ];
 
-function ChatInput() {
+function ChatInput({ compact = false }) {
   const [message, setMessage] = useState("");
   const [selectedMode, setSelectedMode] = useState("auto");
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [sourceImage, setSourceImage] = useState(null);
   const [pdfFile, setPdfFile] = useState(null);
   const [analysisImage, setAnalysisImage] = useState(null);
+  const [attachmentError, setAttachmentError] = useState("");
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
   const dispatch = useDispatch();
@@ -97,15 +96,34 @@ function ChatInput() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    if (selectedMode === "pdfRag") {
-      if (file.type === "application/pdf" && file.size <= 20 * 1024 * 1024) setPdfFile(file);
+    setAttachmentError("");
+    if (file.size > 20 * 1024 * 1024) {
+      setAttachmentError("Files must be 20 MB or smaller.");
       return;
     }
-    if (selectedMode === "imageAnalyzer") {
-      if (["image/png", "image/jpeg", "image/webp"].includes(file.type) && file.size <= 20 * 1024 * 1024) setAnalysisImage(file);
+    if (file.type === "application/pdf") {
+      setPdfFile(file);
+      setAnalysisImage(null);
+      setSourceImage(null);
+      setSelectedMode("pdfRag");
       return;
     }
-    attachImage({ target: { files: [file], value: "" } });
+    if (["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      if (selectedMode === "image") {
+        if (file.size > 10 * 1024 * 1024) {
+          setAttachmentError("Image-generation references must be 10 MB or smaller.");
+          return;
+        }
+        attachImage({ target: { files: [file], value: "" } });
+      } else {
+        setAnalysisImage(file);
+        setPdfFile(null);
+        setSourceImage(null);
+        setSelectedMode("imageAnalyzer");
+      }
+      return;
+    }
+    setAttachmentError("Upload a PDF, PNG, JPEG, or WebP file.");
   };
 
   const handleKeyDown = (event) => {
@@ -116,25 +134,26 @@ function ChatInput() {
   };
 
   return (
-    <div className="w-full shrink-0 bg-[var(--sphere-bg)] px-3 py-4 md:px-5">
+    <div className={`w-full shrink-0 bg-[var(--sphere-bg)] px-3 ${compact ? 'pb-3' : 'py-4'} md:px-5`}>
       <form
         onSubmit={submitMessage}
-        className="mx-auto flex w-full max-w-5xl flex-col rounded-[22px] border border-[var(--sphere-input-border)] bg-[var(--sphere-input)] px-4 pb-3 pt-4 shadow-[0_18px_45px_rgba(0,0,0,0.12)] transition focus-within:border-[var(--sphere-purple)] sm:px-5"
+        className="composer mx-auto flex w-full max-w-4xl flex-col rounded-[22px] border border-[var(--sphere-input-border)] bg-[var(--sphere-input)] px-4 pb-3 pt-4 sm:px-5"
       >
-        <div className="mb-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {agentModes.map(({ id, label, icon: Icon }) => {
+        <div className="mode-strip mb-3 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {agentModes.map(({ id, label, icon: Icon, description }) => {
             const isSelected = selectedMode === id;
             return (
               <button
                 key={id}
                 type="button"
                 onClick={() => setSelectedMode(id)}
-                title={`${label} agent`}
+                title={description}
+                data-tooltip={description}
                 aria-pressed={isSelected}
-                className={`flex h-10 shrink-0 items-center gap-2 rounded-full border px-3.5 text-sm font-semibold transition sm:px-4 ${isSelected
-                  ? "border-[#8b73ff] bg-[var(--sphere-purple)] text-white shadow-[0_0_18px_rgba(109,93,251,0.5)]"
-                  : "border-white/[0.06] bg-white/[0.035] text-slate-500"
-                } cursor-pointer hover:border-white/15 hover:text-slate-300`}
+                className={`mode-button flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-[13px] font-medium sm:px-3.5 ${isSelected
+                  ? "mode-button-active border-[#8b73ff] bg-[var(--sphere-purple)] text-white"
+                  : "border-white/[0.06] bg-white/[0.025] text-slate-500"
+                }`}
               >
                 <Icon size={16} strokeWidth={2} />
                 <span>{label}</span>
@@ -145,6 +164,7 @@ function ChatInput() {
         {selectedMode === "image" && sourceImage && <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[.08] px-3 py-2 text-xs"><span className="truncate">Editing: {sourceImage.name}</span><button type="button" onClick={() => setSourceImage(null)} aria-label="Remove attached image"><X size={14} /></button></div>}
         {selectedMode === "pdfRag" && pdfFile && <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[.08] px-3 py-2 text-xs"><span className="truncate">PDF: {pdfFile.name}</span><button type="button" onClick={() => setPdfFile(null)} aria-label="Remove attached PDF"><X size={14} /></button></div>}
         {selectedMode === "imageAnalyzer" && analysisImage && <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[.08] px-3 py-2 text-xs"><span className="truncate">Image: {analysisImage.name}</span><button type="button" onClick={() => setAnalysisImage(null)} aria-label="Remove attached image"><X size={14} /></button></div>}
+        {attachmentError && <p role="alert" className="mb-3 text-xs text-[var(--sphere-error)]">{attachmentError}</p>}
         {composerDraft && !composerDraft.draftOnly && (
           <div className="flex items-center justify-between rounded-lg bg-[#25232F] px-3 py-2 text-xs text-[var(--sphere-purple-hover)]">
             <span>Editing your message</span>
@@ -163,20 +183,20 @@ function ChatInput() {
             : setMessage(event.target.value)}
           onInput={resizeTextarea}
           onKeyDown={handleKeyDown}
-          placeholder={selectedMode === "image" ? "Describe the image you want..." : selectedMode === "pdfRag" ? "Ask a question about your PDF..." : selectedMode === "imageAnalyzer" ? "Ask a question about your image..." : selectedMode === "auto" ? "Ask anything — Sphere will choose the best agent..." : `Ask the ${selectedMode} agent...`}
+          placeholder={selectedMode === "pdfRag" ? "Ask a question about your PDF..." : selectedMode === "imageAnalyzer" ? "Ask a question about your image..." : "What would you like to create?"}
           rows={3}
-          className="max-h-40 min-h-24 w-full resize-none bg-transparent py-1 text-[15px] leading-relaxed text-[var(--sphere-text)] outline-none placeholder:text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="max-h-40 min-h-28 w-full resize-none bg-transparent py-2 text-base leading-relaxed text-[var(--sphere-text)] outline-none placeholder:text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:min-h-32"
         />
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <input ref={fileInputRef} type="file" accept={selectedMode === "pdfRag" ? "application/pdf" : "image/png,image/jpeg,image/webp"} onChange={attachFile} className="hidden" />
+            <input ref={fileInputRef} type="file" accept="application/pdf,image/png,image/jpeg,image/webp" onChange={attachFile} className="hidden" />
             <button
               type="button"
               title="Attach a file"
               aria-label="Attach a file"
-              onClick={() => ["image", "pdfRag", "imageAnalyzer"].includes(selectedMode) && fileInputRef.current?.click()}
-              className={`grid h-9 w-9 place-items-center rounded-lg text-slate-500 ${["image", "pdfRag", "imageAnalyzer"].includes(selectedMode) ? "hover:bg-white/[.07]" : "cursor-not-allowed opacity-40"}`}
+              onClick={() => fileInputRef.current?.click()}
+              className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition hover:bg-white/[.07] hover:text-slate-300"
             >
               <Paperclip size={18} />
             </button>
@@ -195,7 +215,7 @@ function ChatInput() {
             disabled={!(composerDraft?.content ?? message).trim() || isGenerating || isCreatingConversation}
             title="Send message"
             aria-label="Send message"
-            className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--sphere-purple)] text-white transition hover:bg-[var(--sphere-purple-hover)] disabled:cursor-not-allowed disabled:bg-white/[0.07] disabled:text-[var(--sphere-text-muted)]"
+            className="send-button grid h-10 w-10 place-items-center rounded-xl bg-[var(--sphere-purple)] text-white disabled:cursor-not-allowed disabled:bg-white/[0.07] disabled:text-[var(--sphere-text-muted)]"
           >
             <Send size={18} strokeWidth={2.4} />
           </button>
@@ -208,7 +228,7 @@ function ChatInput() {
         </div>
       )}
       <p className="mx-auto mt-2 max-w-4xl text-center text-[11px] text-[var(--sphere-text-muted)]">
-        Sphere can make mistakes. Check important information.
+        Sphere can make mistakes. Verify important information.
       </p>
     </div>
   );

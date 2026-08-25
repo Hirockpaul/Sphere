@@ -42,6 +42,85 @@ input {
   font: inherit;
 }
 
+.welcome-shell {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px 0 clamp(28px, 7vh, 76px);
+}
+
+.welcome-content {
+  flex: 0 1 auto;
+  padding: 20px 16px 24px;
+}
+
+.sphere-brand-logo {
+  width: 66px;
+  height: 66px;
+  object-fit: contain;
+  opacity: 0.92;
+  filter: drop-shadow(0 0 12px rgba(109, 93, 251, 0.22));
+  animation: sphere-float 5s ease-in-out infinite;
+}
+
+@keyframes sphere-float {
+  0%, 100% { transform: translateY(0); filter: drop-shadow(0 0 10px rgba(109, 93, 251, 0.18)); }
+  50% { transform: translateY(-3px); filter: drop-shadow(0 0 16px rgba(109, 93, 251, 0.3)); }
+}
+
+.starter-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid var(--sphere-divider);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.018);
+  color: var(--sphere-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.starter-action:hover {
+  transform: translateY(-1px);
+  border-color: rgba(139, 115, 255, 0.32);
+  background: rgba(109, 93, 251, 0.07);
+  color: var(--sphere-text);
+}
+
+.composer {
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.018);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.composer:focus-within {
+  border-color: rgba(139, 115, 255, 0.7);
+  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(109, 93, 251, 0.12), 0 0 28px rgba(109, 93, 251, 0.09);
+}
+
+.mode-button {
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 180ms ease, transform 160ms ease;
+}
+
+.mode-button:hover { border-color: rgba(255, 255, 255, 0.14); color: #cbd5e1; transform: translateY(-1px); }
+.mode-button-active { box-shadow: 0 0 18px rgba(109, 93, 251, 0.35); }
+.mode-button-active:hover { color: white; border-color: #9a86ff; }
+
+.send-button { transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
+.send-button:not(:disabled):hover { transform: translateY(-1px); background: var(--sphere-purple-hover); box-shadow: 0 0 20px rgba(109, 93, 251, 0.35); }
+.send-button:not(:disabled):active { transform: translateY(0) scale(0.96); }
+
+@media (max-width: 640px) {
+  .welcome-shell { justify-content: flex-start; padding-top: clamp(28px, 7vh, 64px); padding-bottom: 18px; }
+  .welcome-content { padding-bottom: 20px; }
+  .starter-action:nth-child(n+4) { display: none; }
+}
+
 @keyframes thinking-bounce {
   0%, 60%, 100% { opacity: 0.28; transform: translateY(0) scale(0.78); box-shadow: 0 0 0 transparent; }
   30% { opacity: 1; transform: translateY(-4px) scale(1); box-shadow: 0 0 10px var(--thinking-color); }
@@ -133,6 +212,7 @@ input {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .sphere-brand-logo { animation: none; }
   .thinking-orb::before,
   .thinking-orb i,
   .thinking-dots i {

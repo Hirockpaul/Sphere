@@ -8,6 +8,7 @@ import { setComposerDraft, setMessages } from "../redux/messageSlice";
 
 function ChatArea({ onOpenSidebar }) {
     const { selectedConversation } = useSelector(state => state.conversation)
+    const { messages } = useSelector(state => state.message)
     const dispatch = useDispatch()
     const store = useStore()
 
@@ -37,11 +38,22 @@ function ChatArea({ onOpenSidebar }) {
         }
     }, [dispatch, selectedConversation?._id, store])
 
+    const isWelcome = messages.length === 0
+
     return (
         <div className='flex min-w-0 flex-1 flex-col bg-[var(--sphere-bg)]'>
             <Nav onOpenSidebar={onOpenSidebar} />
-            <MessageList />
-            <ChatInput />
+            {isWelcome ? (
+                <main className='welcome-shell'>
+                    <MessageList compact />
+                    <ChatInput compact />
+                </main>
+            ) : (
+                <>
+                    <MessageList />
+                    <ChatInput />
+                </>
+            )}
         </div>
 
     )

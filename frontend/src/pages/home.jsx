@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { signInWithPopup } from "firebase/auth";
+import { useEffect, useState } from "react";
+import { getRedirectResult, signInWithPopup, signInWithRedirect } from "firebase/auth";
 import { Link, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { auth, googleProvider } from "../../utils/firebase.js";
 import instance from "../../utils/axios.js";
 import { setUser } from "../redux/userSlice.js";
@@ -31,14 +31,41 @@ function GoogleIcon() {
 }
 
 function Home() {
-  const userData = useSelector((state) => state.user.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [loginStep, setLoginStep] = useState("");
   const [error, setError] = useState("");
 
-  console.log("User data from Redux:", userData);
+  const startBackendSession = async (user) => {
+    setLoginStep("Starting your session...");
+    const idToken = await user.getIdToken();
+    const { data } = await instance.post("/auth/login", { idToken });
+    dispatch(setUser(data.user));
+    navigate("/hero", { replace: true });
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (!result?.user || cancelled) return;
+        setLoading(true);
+        await startBackendSession(result.user);
+      })
+      .catch((redirectError) => {
+        if (!cancelled) setError(redirectError.message || "Google sign-in failed");
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+          setLoginStep("");
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, []);
 
   const googleLogin = async () => {
     setError("");
@@ -47,12 +74,13 @@ function Home() {
 
     try {
       const { user } = await signInWithPopup(auth, googleProvider);
-      setLoginStep("Starting your session...");
-      const idToken = await user.getIdToken();
-      const { data } = await instance.post("/auth/login", { idToken });
-      dispatch(setUser(data.user));
-      navigate("/hero", { replace: true });
+      await startBackendSession(user);
     } catch (loginError) {
+      if (loginError.code === "auth/popup-blocked") {
+        setLoginStep("Redirecting to Google...");
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
       const serverUnavailable =
         loginError.code === "ECONNABORTED" ||
         loginError.code === "ERR_NETWORK";

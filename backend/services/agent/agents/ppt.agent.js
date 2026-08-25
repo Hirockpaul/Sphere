@@ -133,6 +133,60 @@ const createFallbackPresentation = (prompt) => {
   };
 };
 
+const visualLayouts = new Set([
+  "hero", "image-left", "image-right", "full-bleed-image", "editorial",
+  "gallery", "image-caption", "text-overlay", "split-content",
+]);
+
+export const ensurePresentationVisuals = (data, minimum = 2, maximum = 4) => {
+  const slides = data.slides.map((item) => ({ ...item }));
+  const requested = slides
+    .map((item, index) => item.visual?.required ? index : -1)
+    .filter((index) => index >= 0);
+
+  for (const index of requested.slice(maximum)) {
+    slides[index].visual = { required: false, type: "none" };
+  }
+
+  let visualCount = Math.min(requested.length, maximum);
+  const candidates = slides
+    .map((item, index) => ({ item, index }))
+    .filter(({ item, index }) =>
+      index < slides.length - 1
+      && !item.visual?.required
+      && ["cover", "image", "content", "highlight", "quote", "example"].includes(item.type)
+    )
+    .sort((left, right) => {
+      const priority = (entry) => entry.item.type === "cover" ? 0 : entry.item.type === "image" ? 1 : 2;
+      return priority(left) - priority(right);
+    });
+
+  for (const { item, index } of candidates) {
+    if (visualCount >= Math.min(minimum, maximum)) break;
+    const isCover = item.type === "cover";
+    const subject = item.keyMessage || item.title || data.title;
+    slides[index] = {
+      ...item,
+      layout: visualLayouts.has(item.layout)
+        ? item.layout
+        : isCover ? "full-bleed-image" : "image-right",
+      visual: {
+        required: true,
+        type: "photo",
+        purpose: `Support the slide's central idea: ${subject}`,
+        placement: isCover ? "background" : "right",
+        aspectRatio: "16:9",
+        prompt: `Cinematic editorial photograph representing ${subject}. Premium charcoal and warm-gold visual direction, dramatic practical lighting, realistic detail, intentional negative space for presentation typography, no text, no logos, no watermark.`,
+        searchQuery: `${data.title} ${item.title}`.trim(),
+        alt: `Editorial visual for ${item.title || data.title}`,
+      },
+    };
+    visualCount += 1;
+  }
+
+  return { ...data, slides };
+};
+
 export const generateSlideVisuals = async (data, presentationId, dependencies = {}) => {
   const imageGenerator = dependencies.generatePresentationImage || generatePresentationImage;
   const imageDownloader = dependencies.downloadPresentationImage || downloadPresentationImage;
@@ -198,6 +252,7 @@ export const pptAgent = async (state, dependencies = {}) => {
         data = createFallbackPresentation(prompt);
       }
     }
+    data = ensurePresentationVisuals(data);
     const timestamp = (dependencies.now || Date.now)();
     const presentationId = `${createSafeFilename(data.title)}-${timestamp}`;
     const slides = await generateSlideVisuals(data, presentationId, dependencies);
