@@ -4,19 +4,50 @@ import MessageBubble from './MessageBubble'
 import useChatRequest from '../hooks/useChatRequest'
 import { selectArtifact, setComposerDraft } from '../redux/messageSlice'
 
+const thinkingStates = {
+    coding: { label: 'Sphere is building', color: '#38bdf8' },
+    image: { label: 'Sphere is creating', color: '#f472b6' },
+    imageAnalyzer: { label: 'Sphere is analyzing the image', color: '#a78bfa' },
+    pdf: { label: 'Sphere is preparing your PDF', color: '#fb7185' },
+    pdfRag: { label: 'Sphere is reading your PDF', color: '#fbbf24' },
+    ppt: { label: 'Sphere is designing your presentation', color: '#fb923c' },
+    search: { label: 'Sphere is searching', color: '#34d399' },
+    chat: { label: 'Sphere is thinking', color: '#818cf8' },
+    auto: { label: 'Sphere is thinking', color: '#818cf8' },
+}
+
+function ThinkingIndicator({ agent }) {
+    const state = thinkingStates[agent] || thinkingStates.auto
+    return (
+        <div className='mx-auto flex w-full max-w-4xl justify-start' role='status' aria-live='polite' aria-label={state.label}>
+            <div className='agent-thinking' style={{ '--thinking-color': state.color }}>
+                <span className='thinking-orb' aria-hidden='true'><i /></span>
+                <span className='thinking-label'>{state.label}</span>
+                <span className='thinking-dots' aria-hidden='true'>
+                    <i /><i /><i />
+                </span>
+            </div>
+        </div>
+    )
+}
+
 function MessageList() {
     const { selectedConversation } = useSelector(state => state.conversation)
     const { messages, isGenerating, generationAgent, activeArtifactMessageId, composerAgent } = useSelector(state => state.message)
     const { submit } = useChatRequest()
     const dispatch = useDispatch()
     const scrollRef = useRef(null)
+    const bottomRef = useRef(null)
 
     useEffect(() => {
-        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+        const frame = window.requestAnimationFrame(() => {
+            bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+        })
+        return () => window.cancelAnimationFrame(frame)
     }, [messages, isGenerating])
 
     return (
-        <div ref={scrollRef} className='flex-1 overflow-y-auto px-4 py-6 md:px-6 space-y-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+        <div ref={scrollRef} className='flex-1 scroll-smooth overflow-y-auto overscroll-contain px-4 py-6 md:px-6 space-y-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
 
             {messages.length == 0 || !selectedConversation ? (
                 <div className='flex h-full flex-col items-center justify-center gap-4 text-center'>
@@ -70,13 +101,9 @@ function MessageList() {
                         />
                     )})}
                     {isGenerating && (
-                        <div className='mx-auto flex w-full max-w-4xl justify-start' role='status' aria-live='polite'>
-                            <div className='flex items-center gap-2 px-1 py-3 text-sm text-[var(--sphere-text-secondary)]'>
-                                <span>{generationAgent === "coding" ? "Sphere is building" : generationAgent === "image" ? "Sphere is creating" : generationAgent === "pdf" ? "Sphere is preparing your PDF" : generationAgent === "ppt" ? "Sphere is designing your presentation" : "Sphere is thinking"}</span>
-                                <span className='flex gap-1' aria-hidden='true'><i className='thinking-dot'/><i className='thinking-dot'/><i className='thinking-dot'/></span>
-                            </div>
-                        </div>
+                        <ThinkingIndicator agent={generationAgent} />
                     )}
+                    <div ref={bottomRef} className='h-px scroll-mb-4' aria-hidden='true' />
 
                 </div>
             }

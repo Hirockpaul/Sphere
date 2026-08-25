@@ -11,7 +11,7 @@ import { logoutUser } from "../services/auth.service";
 import { createConversation } from "../features/createConversation";
 import { addConversation } from "../redux/conversationSlice";
 
-function SideBar() {
+function SideBar({ mobileOpen = false, onMobileClose = () => {} }) {
   const [collapsed, setCollapsed] = useState(false)
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -39,6 +39,7 @@ function SideBar() {
       dispatch(addConversation(conversation))
       dispatch(setSelectedConversation(conversation))
       dispatch(setMessages({ conversationId: conversation._id, messages: [] }))
+      onMobileClose()
     } catch (error) {
       console.error("Failed to create conversation:", error)
     } finally {
@@ -65,7 +66,7 @@ function SideBar() {
     }
   }
 
-  if (collapsed) {
+  if (collapsed && !mobileOpen) {
     return (
       <aside className="hidden lg:flex flex-col items-center w-[64px] h-screen shrink-0 bg-[var(--sphere-sidebar)] border-r border-[var(--sphere-divider)] py-3">
         <button
@@ -153,7 +154,9 @@ function SideBar() {
 
 
   return (
-    <div className='fixed lg:static inset-y-0 left-0 z-50 w-[270px] h-screen shrink-0 bg-[var(--sphere-sidebar)] border-r border-[var(--sphere-divider)]'>
+    <>
+    {mobileOpen && <button type="button" aria-label="Close sidebar" onClick={onMobileClose} className="fixed inset-0 z-40 bg-black/55 backdrop-blur-[1px] lg:hidden" />}
+    <aside className={`fixed inset-y-0 left-0 z-50 h-[100dvh] w-[min(86vw,290px)] shrink-0 border-r border-[var(--sphere-divider)] bg-[var(--sphere-sidebar)] shadow-2xl transition-transform duration-200 ease-out lg:static lg:h-screen lg:w-[270px] lg:translate-x-0 lg:shadow-none ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
       <div className='flex flex-col h-full'>
         <div className='flex items-center gap-2.5 px-4 py-4 border-b border-[var(--sphere-divider)]'>
           <div className='hidden lg:flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/[0.06] transition-colors duration-150 bg-transparent border-none cursor-pointer'
@@ -205,7 +208,7 @@ function SideBar() {
                     : "bg-transparent border-transparent"}`}>
                 <button
                   type="button"
-                  onClick={() => dispatch(setSelectedConversation(conv))}
+                  onClick={() => { dispatch(setSelectedConversation(conv)); onMobileClose(); }}
                   className="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2.5 text-left"
                 >
                 <div
@@ -289,7 +292,8 @@ function SideBar() {
         </div>
 
       </div>
-    </div>
+    </aside>
+    </>
   )
 
 

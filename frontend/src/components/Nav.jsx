@@ -1,11 +1,11 @@
-import { Archive, ChevronDown, EyeOff, Pencil, Star, Trash2 } from 'lucide-react'
+import { Archive, ChevronDown, EyeOff, Menu, Pencil, Star, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { deleteConversation } from '../features/deleteConversation'
 import { updateConversationTitle } from '../features/updateConversation'
 import { removeConversation, updateConversation } from '../redux/conversationSlice'
 
-function Nav() {
+function Nav({ onOpenSidebar }) {
 const {selectedConversation} = useSelector(state=> state.conversation)
 const dispatch = useDispatch()
 const menuRef = useRef(null)
@@ -43,8 +43,11 @@ const removeCurrentConversation = async () => {
 
 const menuItem = 'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-[var(--sphere-text)] transition hover:bg-white/[0.07]'
   return (
-    <>
-    {selectedConversation &&  <div className='relative z-30 flex h-11 items-center px-4 bg-[var(--sphere-bg)]' >
+    <div className='relative z-30 flex h-12 shrink-0 items-center gap-2 border-b border-white/[0.04] bg-[var(--sphere-bg)] px-3 sm:px-4' >
+      <button type='button' onClick={onOpenSidebar} aria-label='Open sidebar' title='Open sidebar' className='grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-white/[0.06] hover:text-white lg:hidden'>
+        <Menu size={19} />
+      </button>
+      {selectedConversation &&
       <div ref={menuRef} className='relative'>
        <button type='button' onClick={() => setOpen(value => !value)} aria-expanded={open} aria-haspopup='menu' className='flex max-w-[320px] items-center gap-1.5 rounded-lg px-1.5 py-1 text-[13px] font-semibold text-[var(--sphere-text)] tracking-tight transition hover:bg-white/[0.06]'>
          <span className='truncate'>{selectedConversation?.title || "New Chat"}</span>
@@ -69,9 +72,8 @@ const menuItem = 'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left 
            <button role='menuitem' type='button' onClick={removeCurrentConversation} className={`${menuItem} text-red-400 hover:bg-red-500/10`}><Trash2 size={16} /><span className='flex-1'>Delete</span><kbd className='text-[11px] text-red-400/60'>D</kbd></button>
          </>}
        </div>}
-      </div>
-    </div>}
-   </>
+      </div>}
+    </div>
   )
 }
 

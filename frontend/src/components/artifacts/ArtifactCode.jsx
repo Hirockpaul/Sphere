@@ -13,10 +13,10 @@ export default function ArtifactCode({ file }) {
         customStyle={{
           minHeight: "100%",
           margin: 0,
-          padding: "20px 18px 28px",
+          padding: "clamp(14px, 3vw, 20px) clamp(10px, 2.5vw, 18px) 28px",
           background: "var(--sphere-code)",
-          fontSize: "14px",
-          lineHeight: "24px",
+          fontSize: "clamp(12px, 1.6vw, 14px)",
+          lineHeight: "1.7",
           overflow: "visible",
         }}
         codeTagProps={{

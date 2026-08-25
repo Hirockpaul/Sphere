@@ -6,7 +6,7 @@ import { useDispatch, useSelector, useStore } from "react-redux";
 import getMessages from "../features/getMessages";
 import { setComposerDraft, setMessages } from "../redux/messageSlice";
 
-function ChatArea() {
+function ChatArea({ onOpenSidebar }) {
     const { selectedConversation } = useSelector(state => state.conversation)
     const dispatch = useDispatch()
     const store = useStore()
@@ -38,8 +38,8 @@ function ChatArea() {
     }, [dispatch, selectedConversation?._id, store])
 
     return (
-        <div className='flex-1 flex flex-col bg-[var(--sphere-bg)]'>
-            <Nav />
+        <div className='flex min-w-0 flex-1 flex-col bg-[var(--sphere-bg)]'>
+            <Nav onOpenSidebar={onOpenSidebar} />
             <MessageList />
             <ChatInput />
         </div>
