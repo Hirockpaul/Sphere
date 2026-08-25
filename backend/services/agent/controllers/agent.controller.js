@@ -1,4 +1,5 @@
 import axios from "axios";
+import { unlink } from "node:fs/promises";
 import { graph } from "../graph/graph.js";
 import {
     addMessage,
@@ -7,7 +8,6 @@ import {
     clearUserMemory,
 } from "../config/memory.js";
 import { getFromS3 } from "../utils/getFromS3.js";
-import { deductCredits } from "../utils/deductCredits.js";
 
 export const agent = async (req, res) => {
     try {
@@ -20,7 +20,7 @@ export const agent = async (req, res) => {
             messageId,
             assistantMessageId,
             agent = req.body.agentMode || "auto",
-            sourceImage,
+            sourceImage: rawSourceImage,
         } = req.body
         const userId = req.headers["x-user-id"];
         const sessionId = req.headers["x-session-id"];
@@ -29,6 +29,9 @@ export const agent = async (req, res) => {
         if (!cleanPrompt || !conversationId || !userId || !sessionId) {
             return res.status(400).json({ message: "Prompt and conversation are required" });
         }
+        const sourceImage = typeof rawSourceImage === "string"
+            ? JSON.parse(rawSourceImage)
+            : rawSourceImage;
         let validatedSourceImage;
         if (sourceImage != null) {
             if (!/^image\/(png|jpeg|webp)$/.test(sourceImage?.mimeType || "") || typeof sourceImage?.data !== "string" || sourceImage.data.length > 14_000_000) return res.status(400).json({ message: "Attach a valid PNG, JPEG, or WebP image up to 10 MB" });
@@ -66,6 +69,7 @@ export const agent = async (req, res) => {
             userId,
             agent,
             sourceImage: validatedSourceImage,
+            file: req.file,
         })
         const response = result.aiResponse
         const images = Array.isArray(result.images) ? result.images : []
@@ -98,12 +102,6 @@ export const agent = async (req, res) => {
             throw new Error("The selected agent returned an empty response");
         }
 
-        const creditResult = await deductCredits({
-            userId,
-            sessionId,
-            agent: result.agent,
-        });
-
         const { data: savedAssistant } = await axios.post(`${process.env.CHAT_SERVICE}/messages`, {
             conversationId, role: "assistant", content: response, images, artifact, pdf, presentation
         }, { headers: { "x-user-id": userId } })
@@ -131,8 +129,6 @@ export const agent = async (req, res) => {
                    ? { ...savedAssistant.message, presentation: { ...presentation, downloadUrl: result.presentationArtifact.downloadUrl } }
                : savedAssistant.message,
            conversation: savedAssistant.conversation || conversation,
-           credits: creditResult.credits,
-           user: creditResult.user,
        });
 
 
@@ -142,6 +138,10 @@ export const agent = async (req, res) => {
         return res.status(error.status || error.response?.status || 500).json({
             message: upstreamMessage || error.message || "Unable to process the message",
         });
+    } finally {
+        if (req.file?.path) {
+            await unlink(req.file.path).catch(() => {});
+        }
     }
 }
 

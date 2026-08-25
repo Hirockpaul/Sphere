@@ -15,8 +15,10 @@ const agentModes = [
   { id: "chat", label: "Chat", icon: MessageSquare },
   { id: "coding", label: "Coding", icon: Code2 },
   { id: "pdf", label: "PDF", icon: FileText },
+  { id: "pdfRag", label: "PDF RAG", icon: FileText },
   { id: "ppt", label: "PPT", icon: Presentation },
   { id: "image", label: "Image", icon: ImageIcon },
+  { id: "imageAnalyzer", label: "Analyze Image", icon: ImageIcon },
   { id: "search", label: "Search", icon: Globe2 },
 ];
 
@@ -25,6 +27,8 @@ function ChatInput() {
   const [selectedMode, setSelectedMode] = useState("auto");
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [sourceImage, setSourceImage] = useState(null);
+  const [pdfFile, setPdfFile] = useState(null);
+  const [analysisImage, setAnalysisImage] = useState(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
   const dispatch = useDispatch();
@@ -73,8 +77,12 @@ function ChatInput() {
         conversationId: conversation._id,
         agent: selectedMode,
         ...(selectedMode === "image" && sourceImage ? { sourceImage } : {}),
+        ...(selectedMode === "pdfRag" && pdfFile ? { file: pdfFile } : {}),
+        ...(selectedMode === "imageAnalyzer" && analysisImage ? { file: analysisImage } : {}),
       });
       if (succeeded) setSourceImage(null);
+      if (succeeded) setPdfFile(null);
+      if (succeeded) setAnalysisImage(null);
       if (succeeded && composerDraft) dispatch(setComposerDraft(null));
       if (!succeeded) setMessage(prompt);
     } catch (error) {
@@ -85,6 +93,20 @@ function ChatInput() {
     }
   };
   const attachImage = (event) => { const file = event.target.files?.[0]; event.target.value = ""; if (!file || !["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 10 * 1024 * 1024) return; const reader = new FileReader(); reader.onload = () => { const [, data] = String(reader.result).split(",", 2); setSourceImage({ mimeType: file.type, data, name: file.name }); }; reader.readAsDataURL(file); };
+  const attachFile = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (selectedMode === "pdfRag") {
+      if (file.type === "application/pdf" && file.size <= 20 * 1024 * 1024) setPdfFile(file);
+      return;
+    }
+    if (selectedMode === "imageAnalyzer") {
+      if (["image/png", "image/jpeg", "image/webp"].includes(file.type) && file.size <= 20 * 1024 * 1024) setAnalysisImage(file);
+      return;
+    }
+    attachImage({ target: { files: [file], value: "" } });
+  };
 
   const handleKeyDown = (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -121,6 +143,8 @@ function ChatInput() {
           })}
         </div>
         {selectedMode === "image" && sourceImage && <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[.08] px-3 py-2 text-xs"><span className="truncate">Editing: {sourceImage.name}</span><button type="button" onClick={() => setSourceImage(null)} aria-label="Remove attached image"><X size={14} /></button></div>}
+        {selectedMode === "pdfRag" && pdfFile && <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[.08] px-3 py-2 text-xs"><span className="truncate">PDF: {pdfFile.name}</span><button type="button" onClick={() => setPdfFile(null)} aria-label="Remove attached PDF"><X size={14} /></button></div>}
+        {selectedMode === "imageAnalyzer" && analysisImage && <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[.08] px-3 py-2 text-xs"><span className="truncate">Image: {analysisImage.name}</span><button type="button" onClick={() => setAnalysisImage(null)} aria-label="Remove attached image"><X size={14} /></button></div>}
         {composerDraft && !composerDraft.draftOnly && (
           <div className="flex items-center justify-between rounded-lg bg-[#25232F] px-3 py-2 text-xs text-[var(--sphere-purple-hover)]">
             <span>Editing your message</span>
@@ -139,20 +163,20 @@ function ChatInput() {
             : setMessage(event.target.value)}
           onInput={resizeTextarea}
           onKeyDown={handleKeyDown}
-          placeholder={selectedMode === "image" ? "Describe the image you want..." : selectedMode === "auto" ? "Ask anything — Sphere will choose the best agent..." : `Ask the ${selectedMode} agent...`}
+          placeholder={selectedMode === "image" ? "Describe the image you want..." : selectedMode === "pdfRag" ? "Ask a question about your PDF..." : selectedMode === "imageAnalyzer" ? "Ask a question about your image..." : selectedMode === "auto" ? "Ask anything — Sphere will choose the best agent..." : `Ask the ${selectedMode} agent...`}
           rows={3}
           className="max-h-40 min-h-24 w-full resize-none bg-transparent py-1 text-[15px] leading-relaxed text-[var(--sphere-text)] outline-none placeholder:text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         />
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={attachImage} className="hidden" />
+            <input ref={fileInputRef} type="file" accept={selectedMode === "pdfRag" ? "application/pdf" : "image/png,image/jpeg,image/webp"} onChange={attachFile} className="hidden" />
             <button
               type="button"
               title="Attach a file"
               aria-label="Attach a file"
-              onClick={() => selectedMode === "image" && fileInputRef.current?.click()}
-              className={`grid h-9 w-9 place-items-center rounded-lg text-slate-500 ${selectedMode === "image" ? "hover:bg-white/[.07]" : "cursor-not-allowed opacity-40"}`}
+              onClick={() => ["image", "pdfRag", "imageAnalyzer"].includes(selectedMode) && fileInputRef.current?.click()}
+              className={`grid h-9 w-9 place-items-center rounded-lg text-slate-500 ${["image", "pdfRag", "imageAnalyzer"].includes(selectedMode) ? "hover:bg-white/[.07]" : "cursor-not-allowed opacity-40"}`}
             >
               <Paperclip size={18} />
             </button>

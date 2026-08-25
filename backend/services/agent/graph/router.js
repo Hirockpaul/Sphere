@@ -1,6 +1,6 @@
 import { getModel } from "../config/llmModel.js";
 
-const VALID_AGENTS = new Set(["chat", "search", "coding", "vision", "pdf", "ppt"]);
+const VALID_AGENTS = new Set(["chat", "search", "coding", "vision", "pdf", "ppt", "pdfRag", "imageAnalyzer"]);
 const CODE_CONCEPTS =
   /\b(code|coding|program(?:ming)?|developer|function|component|hook|class|algorithm)\b/i;
 const SOFTWARE_SYSTEMS =
@@ -98,11 +98,19 @@ coding
 vision
 - Image generation and editing
 
+imageAnalyzer
+- Questions about an uploaded image
+- OCR, chart, table, and visual analysis
+
 pdf
 - PDF summarization
 - PDF question answering
 - PDF generation
 - Document extraction
+
+pdfRag
+- Questions about an uploaded PDF
+- Retrieval from previously uploaded PDFs
 
 ppt
 - PowerPoint generation
@@ -117,6 +125,8 @@ coding
 vision
 pdf
 ppt
+pdfRag
+imageAnalyzer
 
 Do not explain.
 Do not use punctuation.
@@ -128,7 +138,12 @@ ${state.prompt}
  `;
 
   const response = await model.invoke(prompt);
-  const selectedAgent = response.content.trim().toLowerCase();
+  const selectedValue = response.content.trim().toLowerCase();
+  const selectedAgent = selectedValue === "pdfrag"
+    ? "pdfRag"
+    : selectedValue === "imageanalyzer"
+      ? "imageAnalyzer"
+      : selectedValue;
 
   logRoute(startedAt, "model", selectedAgent);
 

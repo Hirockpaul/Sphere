@@ -65,6 +65,12 @@ export const getModel = (agent) => {
     case "pdf":
       return getGemini();
 
+    case "pdfRag":
+      return getGemini();
+
+    case "imageAnalyzer":
+      return getGemini();
+
     case "ppt":
       return getPptGemini();
 

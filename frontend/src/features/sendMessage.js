@@ -7,7 +7,20 @@ const AGENT_TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout
 
 async function sendMessage(payload) {
  try {
-    const {data} = await api.post("/agents/chat", payload, {
+    let requestBody = payload;
+    if (payload.file) {
+      requestBody = new FormData();
+      for (const [key, value] of Object.entries(payload)) {
+        if (value == null) continue;
+        requestBody.append(
+          key,
+          typeof value === "object" && !(value instanceof File)
+            ? JSON.stringify(value)
+            : value,
+        );
+      }
+    }
+    const {data} = await api.post("/agents/chat", requestBody, {
       timeout: AGENT_TIMEOUT_MS,
     })
     return data

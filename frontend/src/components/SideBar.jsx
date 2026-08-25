@@ -1,4 +1,4 @@
-import { Coins, LogOut, MessageSquare, PanelLeftIcon, PanelRight, PenSquare, Plus, Trash2, User } from "lucide-react";
+import { LogOut, MessageSquare, PanelLeftIcon, PanelRight, PenSquare, Plus, Trash2, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from "react-router-dom";
@@ -10,7 +10,6 @@ import { setUser } from "../redux/userSlice";
 import { logoutUser } from "../services/auth.service";
 import { createConversation } from "../features/createConversation";
 import { addConversation } from "../redux/conversationSlice";
-import BillingModal from "./BillingModal.jsx";
 
 function SideBar() {
   const [collapsed, setCollapsed] = useState(false)
@@ -18,7 +17,6 @@ function SideBar() {
   const navigate = useNavigate()
   const [failedAvatarUrl, setFailedAvatarUrl] = useState("")
   const [creating, setCreating] = useState(false)
-  const [billingOpen, setBillingOpen] = useState(false)
   const { conversations, selectedConversation } = useSelector(state => state.conversation)
   const userData = useSelector(state => state.user.user)
   const avatarUrl = userData?.avatar || userData?.photoURL || userData?.picture
@@ -166,7 +164,7 @@ function SideBar() {
             Sphere
           </span>
           <span className='text-[10px] font-medium text-indigo-50 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full tracking-wide'>
-            {userData?.plan || "free"}</span>
+            Free</span>
           <button className='flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/[0.06] transition-colors duration-150 bg-transparent border-none cursor-pointer'
             onClick={handleCreateConversation}
             disabled={creating}
@@ -265,18 +263,9 @@ function SideBar() {
                 <p className="truncate text-[13.5px] font-semibold text-slate-100">
                   {userName}
                 </p>
-                <p className="mt-px truncate text-[11px] text-slate-600">{userData?.credits ?? 0} credits · {userData?.plan || "free"} plan</p>
+                <p className="mt-px truncate text-[11px] text-slate-600">Free access</p>
               </div>
               <div className="flex gap-1">
-                <button
-                  type="button"
-                  title="Credits"
-                  aria-label="Credits"
-                  onClick={() => setBillingOpen(true)}
-                  className="flex items-center justify-center w-7 h-7 rounded-[7px] border-none bg-transparent text-yellow-600 cursor-pointer hover:bg-white/[0.08] hover:text-slate-400 transition-all duration-150"
-                >
-                  <Coins size={16} />
-                </button>
                 <button
                   type="button"
                   title="Log out"
@@ -300,7 +289,6 @@ function SideBar() {
         </div>
 
       </div>
-      {billingOpen && <BillingModal onClose={() => setBillingOpen(false)} />}
     </div>
   )
 

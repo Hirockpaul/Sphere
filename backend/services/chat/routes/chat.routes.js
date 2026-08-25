@@ -16,7 +16,7 @@ const router = express.Router();
 router.get("/create-conversations", createConversation);
 router.post("/conversations", createConversation);
 router.get("/get-conversations", getConversations);
-router.post("/update-conversations", getConversations);
+router.post("/update-conversations", updateConversations);
 router.patch("/conversations", updateConversations);
 router.delete("/conversations/:id", deleteConversation);
 router.post("/messages", saveMessage);
